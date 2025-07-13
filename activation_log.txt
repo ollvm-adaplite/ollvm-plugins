@@ -1,0 +1,868 @@
+[*] Processing executable: ./charge_test.out
+[*] Locating required sections...
+  - Found '.ic_fnames,a' (as '.ic_fnames') at file offset 222960, size 15857
+  - Found '.ic_texthash,aw' (as '.ic_texthash') at file offset 254244, size 72
+  - Found '.ic_key,aw' (as '.ic_key') at file offset 254320, size 32
+  - Found '.ic_functable,aw' (as '.ic_functable') at file offset 254352, size 24640
+[*] Reading the authoritative list of function names from pass...
+  - Pass has marked 280 functions for protection.
+[*] Locating symbol table and filtering functions...
+  - Found and sorted 280 protected functions from symbol table.
+    - Index 0: _GLOBAL__sub_I_crypto_runtime.cpp
+    - Index 1: _Z26xchacha20_poly1305_encryptRKSt6vectorIhSaIhEES3_S3_S3_RS1_S4_
+    - Index 2: _Z5checki
+    - Index 3: _ZL12init_gadgetsv
+    - Index 4: _ZL13phdr_callbackP12dl_phdr_infomPv
+    - Index 5: _ZL14direct_syscallIJ16__ptrace_requestiiiEEllDpT_
+    - Index 6: _ZL14direct_syscallIJEEllDpT_
+    - Index 7: _ZL14direct_syscallIJiliEEllDpT_
+    - Index 8: _ZL14direct_syscallIJiliiEEllDpT_
+    - Index 9: _ZL14direct_syscallIJillmEEllDpT_
+    - Index 10: _ZL14direct_syscallIJlEEllDpT_
+    - Index 11: _ZL14direct_syscallIJliEEllDpT_
+    - Index 12: _ZL14direct_syscallIJlllEEllDpT_
+    - Index 13: _ZL14direct_syscallIJllmEEllDpT_
+    - Index 14: _ZL14direct_syscallIJmmiEEllDpT_
+    - Index 15: _ZL14stack_overflowm
+    - Index 16: _ZL15detect_debuggerv
+    - Index 17: _ZL16secure_terminatev
+    - Index 18: _ZL18base_addr_callbackP12dl_phdr_infomPv
+    - Index 19: _ZL22overwrite_self_on_diskv
+    - Index 20: _ZL23decrypt_and_verify_hashRK14encrypted_hashPKhm
+    - Index 21: _ZL24get_program_base_addressv
+    - Index 22: _ZL32scorched_earth_protocol_advancedv
+    - Index 23: _ZL33overwrite_self_in_memory_advancedv
+    - Index 24: _ZL35verify_text_section_integrity_linuxv
+    - Index 25: _ZN12_GLOBAL__N_112poly1305_macEPKhmS1_Ph
+    - Index 26: _ZN12_GLOBAL__N_114chacha20_blockEPKjPj
+    - Index 27: _ZN12_GLOBAL__N_114chacha20_cryptEPKhS1_jS1_Phm
+    - Index 28: _ZN12_GLOBAL__N_115xchacha20_setupEPKhS1_PhS2_
+    - Index 29: _ZN12_GLOBAL__N_121generate_poly1305_keyEPKhS1_Ph
+    - Index 30: _ZN12_GLOBAL__N_19hchacha20EPKhS1_Ph
+    - Index 31: _ZN4dataD2Ev
+    - Index 32: _ZNKSt12_Vector_baseIhSaIhEE19_M_get_Tp_allocatorEv
+    - Index 33: _ZNKSt14default_deleteINSt6thread6_StateEEclEPS1_
+    - Index 34: _ZNKSt6thread8joinableEv
+    - Index 35: _ZNKSt6vectorIhSaIhEE11_M_data_ptrIhEEPT_S4_
+    - Index 36: _ZNKSt6vectorIhSaIhEE12_M_check_lenEmPKc
+    - Index 37: _ZNKSt6vectorIhSaIhEE4dataEv
+    - Index 38: _ZNKSt6vectorIhSaIhEE4sizeEv
+    - Index 39: _ZNKSt6vectorIhSaIhEE8max_sizeEv
+    - Index 40: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv
+    - Index 41: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
+    - Index 42: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEv
+    - Index 43: _ZNSt10_Head_baseILm0E16__ptrace_requestLb0EE7_M_headERS1_
+    - Index 44: _ZNSt10_Head_baseILm0E16__ptrace_requestLb0EEC2IRS0_EEOT_
+    - Index 45: _ZNSt10_Head_baseILm0EPFvvELb0EE7_M_headERS2_
+    - Index 46: _ZNSt10_Head_baseILm0EPFvvELb0EEC2ERKS1_
+    - Index 47: _ZNSt10_Head_baseILm0EPNSt6thread6_StateELb0EE7_M_headERS3_
+    - Index 48: _ZNSt10_Head_baseILm0EPNSt6thread6_StateELb0EEC2Ev
+    - Index 49: _ZNSt10_Head_baseILm0EiLb0EE7_M_headERS0_
+    - Index 50: _ZNSt10_Head_baseILm0EiLb0EEC2IRiEEOT_
+    - Index 51: _ZNSt10_Head_baseILm0ElLb0EE7_M_headERS0_
+    - Index 52: _ZNSt10_Head_baseILm0ElLb0EEC2IRlEEOT_
+    - Index 53: _ZNSt10_Head_baseILm0EmLb0EE7_M_headERS0_
+    - Index 54: _ZNSt10_Head_baseILm0EmLb0EEC2IRmEEOT_
+    - Index 55: _ZNSt10_Head_baseILm1ESt14default_deleteINSt6thread6_StateEELb1EE7_M_headERS4_
+    - Index 56: _ZNSt10_Head_baseILm1ESt14default_deleteINSt6thread6_StateEELb1EEC2Ev
+    - Index 57: _ZNSt10_Head_baseILm1EiLb0EE7_M_headERS0_
+    - Index 58: _ZNSt10_Head_baseILm1EiLb0EEC2IRiEEOT_
+    - Index 59: _ZNSt10_Head_baseILm1ElLb0EE7_M_headERS0_
+    - Index 60: _ZNSt10_Head_baseILm1ElLb0EEC2IRlEEOT_
+    - Index 61: _ZNSt10_Head_baseILm1EmLb0EE7_M_headERS0_
+    - Index 62: _ZNSt10_Head_baseILm1EmLb0EEC2IRmEEOT_
+    - Index 63: _ZNSt10_Head_baseILm2EiLb0EE7_M_headERS0_
+    - Index 64: _ZNSt10_Head_baseILm2EiLb0EEC2IRiEEOT_
+    - Index 65: _ZNSt10_Head_baseILm2ElLb0EE7_M_headERS0_
+    - Index 66: _ZNSt10_Head_baseILm2ElLb0EEC2IRlEEOT_
+    - Index 67: _ZNSt10_Head_baseILm2EmLb0EE7_M_headERS0_
+    - Index 68: _ZNSt10_Head_baseILm2EmLb0EEC2IRmEEOT_
+    - Index 69: _ZNSt10_Head_baseILm3EiLb0EE7_M_headERS0_
+    - Index 70: _ZNSt10_Head_baseILm3EiLb0EEC2IRiEEOT_
+    - Index 71: _ZNSt10_Head_baseILm3EmLb0EE7_M_headERS0_
+    - Index 72: _ZNSt10_Head_baseILm3EmLb0EEC2IRmEEOT_
+    - Index 73: _ZNSt10unique_ptrINSt6thread6_StateESt14default_deleteIS1_EE11get_deleterEv
+    - Index 74: _ZNSt10unique_ptrINSt6thread6_StateESt14default_deleteIS1_EEC2IS3_vEEPS1_
+    - Index 75: _ZNSt10unique_ptrINSt6thread6_StateESt14default_deleteIS1_EED2Ev
+    - Index 76: _ZNSt11_Tuple_implILm0EJ16__ptrace_requestiiiEE7_M_headERS1_
+    - Index 77: _ZNSt11_Tuple_implILm0EJ16__ptrace_requestiiiEEC2IRS0_JRiS4_S4_EvEEOT_DpOT0_
+    - Index 78: _ZNSt11_Tuple_implILm0EJPFvvEEE7_M_headERS2_
+    - Index 79: _ZNSt11_Tuple_implILm0EJPFvvEEEC2ERKS1_
+    - Index 80: _ZNSt11_Tuple_implILm0EJPNSt6thread6_StateESt14default_deleteIS1_EEE7_M_headERS5_
+    - Index 81: _ZNSt11_Tuple_implILm0EJPNSt6thread6_StateESt14default_deleteIS1_EEEC2Ev
+    - Index 82: _ZNSt11_Tuple_implILm0EJiliEE7_M_headERS0_
+    - Index 83: _ZNSt11_Tuple_implILm0EJiliEEC2IRiJRlS2_EvEEOT_DpOT0_
+    - Index 84: _ZNSt11_Tuple_implILm0EJiliiEE7_M_headERS0_
+    - Index 85: _ZNSt11_Tuple_implILm0EJiliiEEC2IRiJRlS2_S2_EvEEOT_DpOT0_
+    - Index 86: _ZNSt11_Tuple_implILm0EJillmEE7_M_headERS0_
+    - Index 87: _ZNSt11_Tuple_implILm0EJillmEEC2IRiJRlS3_RmEvEEOT_DpOT0_
+    - Index 88: _ZNSt11_Tuple_implILm0EJlEE7_M_headERS0_
+    - Index 89: _ZNSt11_Tuple_implILm0EJlEEC2IRlEEOT_
+    - Index 90: _ZNSt11_Tuple_implILm0EJliEE7_M_headERS0_
+    - Index 91: _ZNSt11_Tuple_implILm0EJliEEC2IRlJRiEvEEOT_DpOT0_
+    - Index 92: _ZNSt11_Tuple_implILm0EJlllEE7_M_headERS0_
+    - Index 93: _ZNSt11_Tuple_implILm0EJlllEEC2IRlJS2_S2_EvEEOT_DpOT0_
+    - Index 94: _ZNSt11_Tuple_implILm0EJllmEE7_M_headERS0_
+    - Index 95: _ZNSt11_Tuple_implILm0EJllmEEC2IRlJS2_RmEvEEOT_DpOT0_
+    - Index 96: _ZNSt11_Tuple_implILm0EJmmiEE7_M_headERS0_
+    - Index 97: _ZNSt11_Tuple_implILm0EJmmiEEC2IRmJS2_RiEvEEOT_DpOT0_
+    - Index 98: _ZNSt11_Tuple_implILm1EJSt14default_deleteINSt6thread6_StateEEEE7_M_headERS4_
+    - Index 99: _ZNSt11_Tuple_implILm1EJSt14default_deleteINSt6thread6_StateEEEEC2Ev
+    - Index 100: _ZNSt11_Tuple_implILm1EJiEE7_M_headERS0_
+    - Index 101: _ZNSt11_Tuple_implILm1EJiEEC2IRiEEOT_
+    - Index 102: _ZNSt11_Tuple_implILm1EJiiiEE7_M_headERS0_
+    - Index 103: _ZNSt11_Tuple_implILm1EJiiiEEC2IRiJS2_S2_EvEEOT_DpOT0_
+    - Index 104: _ZNSt11_Tuple_implILm1EJliEE7_M_headERS0_
+    - Index 105: _ZNSt11_Tuple_implILm1EJliEEC2IRlJRiEvEEOT_DpOT0_
+    - Index 106: _ZNSt11_Tuple_implILm1EJliiEE7_M_headERS0_
+    - Index 107: _ZNSt11_Tuple_implILm1EJliiEEC2IRlJRiS3_EvEEOT_DpOT0_
+    - Index 108: _ZNSt11_Tuple_implILm1EJllEE7_M_headERS0_
+    - Index 109: _ZNSt11_Tuple_implILm1EJllEEC2IRlJS2_EvEEOT_DpOT0_
+    - Index 110: _ZNSt11_Tuple_implILm1EJllmEE7_M_headERS0_
+    - Index 111: _ZNSt11_Tuple_implILm1EJllmEEC2IRlJS2_RmEvEEOT_DpOT0_
+    - Index 112: _ZNSt11_Tuple_implILm1EJlmEE7_M_headERS0_
+    - Index 113: _ZNSt11_Tuple_implILm1EJlmEEC2IRlJRmEvEEOT_DpOT0_
+    - Index 114: _ZNSt11_Tuple_implILm1EJmiEE7_M_headERS0_
+    - Index 115: _ZNSt11_Tuple_implILm1EJmiEEC2IRmJRiEvEEOT_DpOT0_
+    - Index 116: _ZNSt11_Tuple_implILm2EJiEE7_M_headERS0_
+    - Index 117: _ZNSt11_Tuple_implILm2EJiEEC2IRiEEOT_
+    - Index 118: _ZNSt11_Tuple_implILm2EJiiEE7_M_headERS0_
+    - Index 119: _ZNSt11_Tuple_implILm2EJiiEEC2IRiJS2_EvEEOT_DpOT0_
+    - Index 120: _ZNSt11_Tuple_implILm2EJlEE7_M_headERS0_
+    - Index 121: _ZNSt11_Tuple_implILm2EJlEEC2IRlEEOT_
+    - Index 122: _ZNSt11_Tuple_implILm2EJlmEE7_M_headERS0_
+    - Index 123: _ZNSt11_Tuple_implILm2EJlmEEC2IRlJRmEvEEOT_DpOT0_
+    - Index 124: _ZNSt11_Tuple_implILm2EJmEE7_M_headERS0_
+    - Index 125: _ZNSt11_Tuple_implILm2EJmEEC2IRmEEOT_
+    - Index 126: _ZNSt11_Tuple_implILm3EJiEE7_M_headERS0_
+    - Index 127: _ZNSt11_Tuple_implILm3EJiEEC2IRiEEOT_
+    - Index 128: _ZNSt11_Tuple_implILm3EJmEE7_M_headERS0_
+    - Index 129: _ZNSt11_Tuple_implILm3EJmEEC2IRmEEOT_
+    - Index 130: _ZNSt12_Destroy_auxILb1EE9__destroyIPhEEvT_S3_
+    - Index 131: _ZNSt12_Vector_baseIhSaIhEE11_M_allocateEm
+    - Index 132: _ZNSt12_Vector_baseIhSaIhEE12_Vector_implC2ERKS0_
+    - Index 133: _ZNSt12_Vector_baseIhSaIhEE12_Vector_implD2Ev
+    - Index 134: _ZNSt12_Vector_baseIhSaIhEE13_M_deallocateEPhm
+    - Index 135: _ZNSt12_Vector_baseIhSaIhEE17_M_create_storageEm
+    - Index 136: _ZNSt12_Vector_baseIhSaIhEE17_Vector_impl_dataC2Ev
+    - Index 137: _ZNSt12_Vector_baseIhSaIhEE19_M_get_Tp_allocatorEv
+    - Index 138: _ZNSt12_Vector_baseIhSaIhEEC2EmRKS0_
+    - Index 139: _ZNSt12_Vector_baseIhSaIhEED2Ev
+    - Index 140: _ZNSt15__new_allocatorIcE10deallocateEPcm
+    - Index 141: _ZNSt15__new_allocatorIhE10deallocateEPhm
+    - Index 142: _ZNSt15__new_allocatorIhE8allocateEmPKv
+    - Index 143: _ZNSt15__uniq_ptr_dataINSt6thread6_StateESt14default_deleteIS1_ELb1ELb1EECI2St15__uniq_ptr_implIS1_S3_EEPS1_
+    - Index 144: _ZNSt15__uniq_ptr_implINSt6thread6_StateESt14default_deleteIS1_EE10_M_deleterEv
+    - Index 145: _ZNSt15__uniq_ptr_implINSt6thread6_StateESt14default_deleteIS1_EE6_M_ptrEv
+    - Index 146: _ZNSt15__uniq_ptr_implINSt6thread6_StateESt14default_deleteIS1_EEC2EPS1_
+    - Index 147: _ZNSt19__ptr_traits_ptr_toIPKcS0_Lb0EE10pointer_toERS0_
+    - Index 148: _ZNSt22__uninitialized_fill_nILb1EE15__uninit_fill_nIPhmhEET_S3_T0_RKT1_
+    - Index 149: _ZNSt27__uninitialized_default_n_1ILb1EE18__uninit_default_nIPhmEET_S3_T0_
+    - Index 150: _ZNSt5tupleIJ16__ptrace_requestiiiEEC2IJRS0_RiS4_S4_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS6_EEntcl9__danglesIS6_EEEEDpOT_
+    - Index 151: _ZNSt5tupleIJPFvvEEEC2ERKS1_Qcl15__constructibleIDpRKT_EE
+    - Index 152: _ZNSt5tupleIJPNSt6thread6_StateESt14default_deleteIS1_EEEC2EvQfraa26is_default_constructible_vIT_E
+    - Index 153: _ZNSt5tupleIJiliEEC2IJRiRlS2_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_
+    - Index 154: _ZNSt5tupleIJiliiEEC2IJRiRlS2_S2_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_
+    - Index 155: _ZNSt5tupleIJillmEEC2IJRiRlS3_RmEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS6_EEntcl9__danglesIS6_EEEEDpOT_
+    - Index 156: _ZNSt5tupleIJlEEC2IJRlEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS4_EEntcl9__danglesIS4_EEEEDpOT_
+    - Index 157: _ZNSt5tupleIJliEEC2IJRlRiEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_
+    - Index 158: _ZNSt5tupleIJlllEEC2IJRlS2_S2_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS4_EEntcl9__danglesIS4_EEEEDpOT_
+    - Index 159: _ZNSt5tupleIJllmEEC2IJRlS2_RmEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_
+    - Index 160: _ZNSt5tupleIJmmiEEC2IJRmS2_RiEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_
+    - Index 161: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEE6_M_runEv
+    - Index 162: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEC2IJRS3_EEEDpOT_
+    - Index 163: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED0Ev
+    - Index 164: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED2Ev
+    - Index 165: _ZNSt6thread24_M_thread_deps_never_runEv
+    - Index 166: _ZNSt6thread2idC2Ev
+    - Index 167: _ZNSt6thread6_StateC2Ev
+    - Index 168: _ZNSt6thread8_InvokerISt5tupleIJPFvvEEEE9_M_invokeIJLm0EEEEvSt12_Index_tupleIJXspT_EEE
+    - Index 169: _ZNSt6thread8_InvokerISt5tupleIJPFvvEEEEC2IJRS2_EEEDpOT_
+    - Index 170: _ZNSt6thread8_InvokerISt5tupleIJPFvvEEEEclEv
+    - Index 171: _ZNSt6threadC2IRFvvEJEvEEOT_DpOT0_
+    - Index 172: _ZNSt6threadD2Ev
+    - Index 173: _ZNSt6vectorIhSaIhEE11_S_max_sizeERKS0_
+    - Index 174: _ZNSt6vectorIhSaIhEE11_S_relocateEPhS2_S2_RS0_
+    - Index 175: _ZNSt6vectorIhSaIhEE15_M_erase_at_endEPh
+    - Index 176: _ZNSt6vectorIhSaIhEE17_M_default_appendEm
+    - Index 177: _ZNSt6vectorIhSaIhEE17_S_check_init_lenEmRKS0_
+    - Index 178: _ZNSt6vectorIhSaIhEE18_M_fill_initializeEmRKh
+    - Index 179: _ZNSt6vectorIhSaIhEE4dataEv
+    - Index 180: _ZNSt6vectorIhSaIhEE6resizeEm
+    - Index 181: _ZNSt6vectorIhSaIhEEC2EmRKhRKS0_
+    - Index 182: _ZNSt6vectorIhSaIhEED2Ev
+    - Index 183: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
+    - Index 184: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
+    - Index 185: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderD2Ev
+    - Index 186: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_get_allocatorEv
+    - Index 187: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED2Ev
+    - Index 188: _ZSt10_ConstructIhJEEvPT_DpOT0_
+    - Index 189: _ZSt10__fill_n_aIPhmhET_S1_T0_RKT1_St26random_access_iterator_tag
+    - Index 190: _ZSt10make_tupleIJR16__ptrace_requestRiS2_S2_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS6_
+    - Index 191: _ZSt10make_tupleIJRiRlS0_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_
+    - Index 192: _ZSt10make_tupleIJRiRlS0_S0_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_
+    - Index 193: _ZSt10make_tupleIJRiRlS1_RmEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS6_
+    - Index 194: _ZSt10make_tupleIJRlEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS4_
+    - Index 195: _ZSt10make_tupleIJRlRiEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_
+    - Index 196: _ZSt10make_tupleIJRlS0_RmEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_
+    - Index 197: _ZSt10make_tupleIJRlS0_S0_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS4_
+    - Index 198: _ZSt10make_tupleIJRmS0_RiEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_
+    - Index 199: _ZSt12__get_helperILm0E16__ptrace_requestJiiiEERT0_RSt11_Tuple_implIXT_EJS1_DpT1_EE
+    - Index 200: _ZSt12__get_helperILm0EPFvvEJEERT0_RSt11_Tuple_implIXT_EJS2_DpT1_EE
+    - Index 201: _ZSt12__get_helperILm0EPNSt6thread6_StateEJSt14default_deleteIS1_EEERT0_RSt11_Tuple_implIXT_EJS5_DpT1_EE
+    - Index 202: _ZSt12__get_helperILm0EiJliEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 203: _ZSt12__get_helperILm0EiJliiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 204: _ZSt12__get_helperILm0EiJllmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 205: _ZSt12__get_helperILm0ElJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 206: _ZSt12__get_helperILm0ElJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 207: _ZSt12__get_helperILm0ElJllEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 208: _ZSt12__get_helperILm0ElJlmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 209: _ZSt12__get_helperILm0EmJmiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 210: _ZSt12__get_helperILm1ESt14default_deleteINSt6thread6_StateEEJEERT0_RSt11_Tuple_implIXT_EJS4_DpT1_EE
+    - Index 211: _ZSt12__get_helperILm1EiJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 212: _ZSt12__get_helperILm1EiJiiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 213: _ZSt12__get_helperILm1ElJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 214: _ZSt12__get_helperILm1ElJiiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 215: _ZSt12__get_helperILm1ElJlEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 216: _ZSt12__get_helperILm1ElJlmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 217: _ZSt12__get_helperILm1ElJmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 218: _ZSt12__get_helperILm1EmJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 219: _ZSt12__get_helperILm2EiJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 220: _ZSt12__get_helperILm2EiJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 221: _ZSt12__get_helperILm2ElJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 222: _ZSt12__get_helperILm2ElJmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 223: _ZSt12__get_helperILm2EmJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 224: _ZSt12__get_helperILm3EiJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 225: _ZSt12__get_helperILm3EmJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE
+    - Index 226: _ZSt12__niter_baseIPhET_S1_
+    - Index 227: _ZSt12__relocate_aIPhS0_SaIhEET0_T_S3_S2_RT1_
+    - Index 228: _ZSt13__invoke_implIvPFvvEJEET_St14__invoke_otherOT0_DpOT1_
+    - Index 229: _ZSt14__relocate_a_1IhhENSt9enable_ifIXsr3std24__is_bitwise_relocatableIT_EE5valueEPS1_E4typeES2_S2_S2_RSaIT0_E
+    - Index 230: _ZSt17__size_to_integerm
+    - Index 231: _ZSt20uninitialized_fill_nIPhmhET_S1_T0_RKT1_
+    - Index 232: _ZSt24__uninitialized_fill_n_aIPhmhhET_S1_T0_RKT1_RSaIT2_E
+    - Index 233: _ZSt25__uninitialized_default_nIPhmET_S1_T0_
+    - Index 234: _ZSt27__uninitialized_default_n_aIPhmhET_S1_T0_RSaIT1_E
+    - Index 235: _ZSt3getILm0EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_
+    - Index 236: _ZSt3getILm0EJPFvvEEEONSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeEOS6_
+    - Index 237: _ZSt3getILm0EJPNSt6thread6_StateESt14default_deleteIS1_EEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS9_
+    - Index 238: _ZSt3getILm0EJiliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 239: _ZSt3getILm0EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 240: _ZSt3getILm0EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 241: _ZSt3getILm0EJlEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 242: _ZSt3getILm0EJliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 243: _ZSt3getILm0EJlllEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 244: _ZSt3getILm0EJllmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 245: _ZSt3getILm0EJmmiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 246: _ZSt3getILm1EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_
+    - Index 247: _ZSt3getILm1EJPNSt6thread6_StateESt14default_deleteIS1_EEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS9_
+    - Index 248: _ZSt3getILm1EJiliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 249: _ZSt3getILm1EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 250: _ZSt3getILm1EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 251: _ZSt3getILm1EJliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 252: _ZSt3getILm1EJlllEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 253: _ZSt3getILm1EJllmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 254: _ZSt3getILm1EJmmiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 255: _ZSt3getILm2EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_
+    - Index 256: _ZSt3getILm2EJiliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 257: _ZSt3getILm2EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 258: _ZSt3getILm2EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 259: _ZSt3getILm2EJlllEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 260: _ZSt3getILm2EJllmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 261: _ZSt3getILm2EJmmiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 262: _ZSt3getILm3EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_
+    - Index 263: _ZSt3getILm3EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 264: _ZSt3getILm3EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_
+    - Index 265: _ZSt3maxImERKT_S2_S2_
+    - Index 266: _ZSt3minImERKT_S2_S2_
+    - Index 267: _ZSt6fill_nIPhmhET_S1_T0_RKT1_
+    - Index 268: _ZSt8_DestroyIPhEvT_S1_
+    - Index 269: _ZSt8__fill_aIPhhEvT_S1_RKT0_
+    - Index 270: _ZSt8__invokeIPFvvEJEENSt15__invoke_resultIT_JDpT0_EE4typeEOS3_DpOS4_
+    - Index 271: _ZSt9__fill_a1IhEN9__gnu_cxx11__enable_ifIXsr9__is_byteIT_EE7__valueEvE6__typeEPS2_S5_RKS2_
+    - Index 272: _ZSteqNSt6thread2idES0_
+    - Index 273: _ZZNSt6vectorIhSaIhEE17_M_default_appendEmEN6_GuardC2EPhmRS0_
+    - Index 274: _ZZNSt6vectorIhSaIhEE17_M_default_appendEmEN6_GuardD2Ev
+    - Index 275: __aead_xchacha20_poly1305_decrypt
+    - Index 276: __clang_call_terminate
+    - Index 277: __cxx_global_var_init
+    - Index 278: __tsx_tamper_handler
+    - Index 279: main
+  - Capacity check passed: Table has space for 280, found 280.
+[*] Generated new master key.
+[*] Hashing and encrypting executable segment...
+    - Found executable segment: offset=0x2000, filesz=211049, memsz=211049
+    - Hashing 211049 bytes for the segment.
+    - Executable segment hash: 23dc080f674facaf5754ff6d5b0a4b3b98dff59e0049ebfe636ad5218373d5cc
+[*] Hashing and encrypting 280 functions...
+  - [0] Hashing '_GLOBAL__sub_I_crypto_runtime.cpp': Addr=0x2200, Size=24
+    - Plaintext Hash: 2c8c7236b34847558e73fa2a7c4407c97824fdeec75c7987778998b4655cb0db
+  - [1] Hashing '_Z26xchacha20_poly1305_encryptRKSt6vectorIhSaIhEES3_S3_S3_RS1_S4_': Addr=0x2400, Size=669
+    - Plaintext Hash: 93dda8943cc4e40deaa985dc9d248df1a72f7452fb18640a874f50ac3b07e753
+  - [2] Hashing '_Z5checki': Addr=0x2330, Size=50
+    - Plaintext Hash: 833c4055f8a652db57b85512032a88872adc299b9fe6420ae6b40b0f8de25639
+  - [3] Hashing '_ZL12init_gadgetsv': Addr=0x4320, Size=172
+    - Plaintext Hash: 47f45b57db2ce4e50b274850ead1988ce064b302487959d5150fa39e6bad421c
+  - [4] Hashing '_ZL13phdr_callbackP12dl_phdr_infomPv': Addr=0x4bc0, Size=276
+    - Plaintext Hash: 2010f937000d599a4d6377d7447c42dd4797d424d385ce6f9a419d2d6ba6463b
+  - [5] Hashing '_ZL14direct_syscallIJ16__ptrace_requestiiiEEllDpT_': Addr=0x4820, Size=145
+    - Plaintext Hash: 611c942f75bf77aaa669ce36d92b6e807820842437d200e434482669d3397776
+  - [6] Hashing '_ZL14direct_syscallIJEEllDpT_': Addr=0x4790, Size=33
+    - Plaintext Hash: 9fc2b941c151cfb4a8b14b79a2474013653672141dfcdc22315b7ff7964511a2
+  - [7] Hashing '_ZL14direct_syscallIJiliEEllDpT_': Addr=0x4960, Size=114
+    - Plaintext Hash: 10deffc4097f9546702187896dd7efcb742248eb140033a38100f656bfee8d3c
+  - [8] Hashing '_ZL14direct_syscallIJiliiEEllDpT_': Addr=0x49e0, Size=146
+    - Plaintext Hash: d8121b177ab3a8882e6a09ed10cb3bb42bab0b0c7da6e84866a5384e754fde6f
+  - [9] Hashing '_ZL14direct_syscallIJillmEEllDpT_': Addr=0x48c0, Size=147
+    - Plaintext Hash: 921e45e7dc1c79a07b47f2d3e912c1f537e63f862fac6ce1d82323178a4d4daa
+  - [10] Hashing '_ZL14direct_syscallIJlEEllDpT_': Addr=0x4a80, Size=62
+    - Plaintext Hash: 7d1e66991c69bce9c1e21e94b0878d24a55292d1f7e9e6c1a668b5392ce3b863
+  - [11] Hashing '_ZL14direct_syscallIJliEEllDpT_': Addr=0x47c0, Size=88
+    - Plaintext Hash: 2d62052dbfd8afae8e5343339d8aa6b77cb5a17cc48b5972d08bce328ec0803b
+  - [12] Hashing '_ZL14direct_syscallIJlllEEllDpT_': Addr=0x4b40, Size=116
+    - Plaintext Hash: e549947717b58e073b14db905b89ebd25ce22e858bb4c7489893464415e766ab
+  - [13] Hashing '_ZL14direct_syscallIJllmEEllDpT_': Addr=0x4ac0, Size=120
+    - Plaintext Hash: 11de7ccaf001e772b5e40f1332805c9cc984d0b80554ad563b8b6c47aef144d8
+  - [14] Hashing '_ZL14direct_syscallIJmmiEEllDpT_': Addr=0x4570, Size=115
+    - Plaintext Hash: 67e004347a2d427ff6d57cb11d3314fd9c5e8a89da2c550c31cf4202c384241d
+  - [15] Hashing '_ZL14stack_overflowm': Addr=0x3070, Size=426
+    - Plaintext Hash: 2c06ea014b3fc4f27aee37ae9f7bd560c6cc965557057b457636b8b5c18b48c3
+  - [16] Hashing '_ZL15detect_debuggerv': Addr=0x45f0, Size=76
+    - Plaintext Hash: d05f9270d77cacf4231d302bdd7a38a8a77e1a9d3cacf8841a0305a164aa4707
+  - [17] Hashing '_ZL16secure_terminatev': Addr=0x3220, Size=263
+    - Plaintext Hash: 3546451165297d998c5c69e5180d0c5df975ea4f585d7de306e17791b28fe866
+  - [18] Hashing '_ZL18base_addr_callbackP12dl_phdr_infomPv': Addr=0x4ce0, Size=37
+    - Plaintext Hash: ebc412e7651c5377e5f2dbfbcb470eff5d3fd2f0c99c6454c636aec6fbd75714
+  - [19] Hashing '_ZL22overwrite_self_on_diskv': Addr=0x4640, Size=334
+    - Plaintext Hash: 07d5c617924dee1d8c2451c4726f93e5613daa169a75e67cc80c8040119f7db2
+  - [20] Hashing '_ZL23decrypt_and_verify_hashRK14encrypted_hashPKhm': Addr=0x3470, Size=242
+    - Plaintext Hash: 80f58cc535de03fc6efcb83055be40c1af2407e4963765242925efa3a556a849
+  - [21] Hashing '_ZL24get_program_base_addressv': Addr=0x3440, Size=42
+    - Plaintext Hash: a64c6611a195db484a616536b62cc3135ae84ad9da17e3fecd1df5d2120f7e35
+  - [22] Hashing '_ZL32scorched_earth_protocol_advancedv': Addr=0x44d0, Size=159
+    - Plaintext Hash: 475b2eaf68ec2621cd68df2eeb892d67380e00eb7fc082d95830f001f580acbd
+  - [23] Hashing '_ZL33overwrite_self_in_memory_advancedv': Addr=0x43d0, Size=244
+    - Plaintext Hash: 76cc9d9aa047d00b065c9132e2c68d7d8aab7ce0fbe2090180be6025004030f2
+  - [24] Hashing '_ZL35verify_text_section_integrity_linuxv': Addr=0x3350, Size=45
+    - Plaintext Hash: 5e9a33d80a67c49d820224609f80f51bdc32a8256187226dfc724c9c741b01df
+  - [25] Hashing '_ZN12_GLOBAL__N_112poly1305_macEPKhmS1_Ph': Addr=0x2890, Size=1484
+    - Plaintext Hash: ed73b1415760acd99d2b76afc7fde42e9bf97de2f063a5434ad02515493d6ecb
+  - [26] Hashing '_ZN12_GLOBAL__N_114chacha20_blockEPKjPj': Addr=0x3ac0, Size=2144
+    - Plaintext Hash: fd9074156ace62ec52fc79f4f6b2ccab34e9d37ed465f445c34b0b2ab292e552
+  - [27] Hashing '_ZN12_GLOBAL__N_114chacha20_cryptEPKhS1_jS1_Phm': Addr=0x2740, Size=328
+    - Plaintext Hash: 1051a1d3aca065c231a3a2ecd0c178d867207be9e34bc7abe67bd7e1cb809b97
+  - [28] Hashing '_ZN12_GLOBAL__N_115xchacha20_setupEPKhS1_PhS2_': Addr=0x26a0, Size=79
+    - Plaintext Hash: ebb4dbdd15e292224ef412ba0fe60042bf35531b68b0eb2eb29bec1d40743f66
+  - [29] Hashing '_ZN12_GLOBAL__N_121generate_poly1305_keyEPKhS1_Ph': Addr=0x26f0, Size=71
+    - Plaintext Hash: 570f6373788c2b2fe7d7698c0553f3097e121c872e2de9a6e977c11f68996905
+  - [30] Hashing '_ZN12_GLOBAL__N_19hchacha20EPKhS1_Ph': Addr=0x3570, Size=1359
+    - Plaintext Hash: 4ee84dd4be483ebf948d91391a58b80ba90aad400e315f2f8f37135286032c98
+  - [31] Hashing '_ZN4dataD2Ev': Addr=0x4d20, Size=53
+    - Plaintext Hash: 91b9c1cb69289fd9d9a0a2a1c095803a34d8097abab9b9943addb52c1511fd6d
+  - [32] Hashing '_ZNKSt12_Vector_baseIhSaIhEE19_M_get_Tp_allocatorEv': Addr=0x9bb0, Size=47
+    - Plaintext Hash: 2229ff2130262a27040f7cb87d9c247045557fcc3bbd1f44c1e353570b90a245
+  - [33] Hashing '_ZNKSt14default_deleteINSt6thread6_StateEEclEPS1_': Addr=0x7eb0, Size=70
+    - Plaintext Hash: db4017398c6dd3f40f4b5505589542dc1cb39d33d20b3e2964351d4921b8992d
+  - [34] Hashing '_ZNKSt6thread8joinableEv': Addr=0x7c00, Size=86
+    - Plaintext Hash: 9469569f538fde9f8a7751a133804a03f844eef67efde8349e5eae9383148c9d
+  - [35] Hashing '_ZNKSt6vectorIhSaIhEE11_M_data_ptrIhEEPT_S4_': Addr=0x9380, Size=61
+    - Plaintext Hash: 97426b772bffe44573663a9153235a441a1b6d5f980be75b4c2815714948c7be
+  - [36] Hashing '_ZNKSt6vectorIhSaIhEE12_M_check_lenEmPKc': Addr=0x96d0, Size=203
+    - Plaintext Hash: bef18f901ccc57693c1c997f6328d74e578651651c705a78e113263bc9ecc441
+  - [37] Hashing '_ZNKSt6vectorIhSaIhEE4dataEv': Addr=0x8810, Size=58
+    - Plaintext Hash: 656618f55f51644f86da95b9b1d8e6a660bfebff5c4f32a5a8005760fb91bd55
+  - [38] Hashing '_ZNKSt6vectorIhSaIhEE4sizeEv': Addr=0x8740, Size=57
+    - Plaintext Hash: 1fc9d7a93eee3edcb16aa3958e120abf566922b180e81639a530b0f89302d418
+  - [39] Hashing '_ZNKSt6vectorIhSaIhEE8max_sizeEv': Addr=0x9630, Size=63
+    - Plaintext Hash: 9505bad0665f18fc86de212d77c3b77e4f29913cb2d29aae95fbf37b81de4009
+  - [40] Hashing '_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv': Addr=0x4e50, Size=100
+    - Plaintext Hash: 8f41be5219a49ccc4a6632c3b7ca762662a5647342ad53d813b5a307cd1d2803
+  - [41] Hashing '_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv': Addr=0x5020, Size=59
+    - Plaintext Hash: 7a185747a3167a81fb0e9ed47fa41d2222796ab650ffd834945e3cd91f70872e
+  - [42] Hashing '_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEv': Addr=0x4f80, Size=50
+    - Plaintext Hash: 789839468ce516e86639fe79f8f06de526aed7554f44d534428950c80e3e18bd
+  - [43] Hashing '_ZNSt10_Head_baseILm0E16__ptrace_requestLb0EE7_M_headERS1_': Addr=0x7140, Size=47
+    - Plaintext Hash: 001a2ea6b51d6e6c2f5d6b84180d8fd87d8f75aad63751ea260aa52d32b61ffb
+  - [44] Hashing '_ZNSt10_Head_baseILm0E16__ptrace_requestLb0EEC2IRS0_EEOT_': Addr=0x72e0, Size=66
+    - Plaintext Hash: 90d5d56122e33b80cf31629d1e66cf2c0bb16fd03dc6cea55ac2d25b56307c6f
+  - [45] Hashing '_ZNSt10_Head_baseILm0EPFvvELb0EE7_M_headERS2_': Addr=0x8710, Size=47
+    - Plaintext Hash: 0ca513da7aba3ee8688b53e84de0d8a3ef057a284471f131206e82f08f6aae38
+  - [46] Hashing '_ZNSt10_Head_baseILm0EPFvvELb0EEC2ERKS1_': Addr=0x8430, Size=68
+    - Plaintext Hash: ce0dab1be8206a68773ee5388439f45b4195df6cfc325948911fe602ba10f7bd
+  - [47] Hashing '_ZNSt10_Head_baseILm0EPNSt6thread6_StateELb0EE7_M_headERS3_': Addr=0x80f0, Size=47
+    - Plaintext Hash: ba9422e891e705131a2d1f258cd74af374d84405799b061a81418fcd656b2771
+  - [48] Hashing '_ZNSt10_Head_baseILm0EPNSt6thread6_StateELb0EEC2Ev': Addr=0x8290, Size=51
+    - Plaintext Hash: c4941754709f7b49ff3e36e72bed957aefd22cb3c75d6268793a9b391c3864e8
+  - [49] Hashing '_ZNSt10_Head_baseILm0EiLb0EE7_M_headERS0_': Addr=0x6010, Size=47
+    - Plaintext Hash: 87b0d331cccf1d11bbb1d260f01b658c4170ed97c4f84456b3875eb70aa2ec10
+  - [50] Hashing '_ZNSt10_Head_baseILm0EiLb0EEC2IRiEEOT_': Addr=0x6260, Size=66
+    - Plaintext Hash: 33f5ceef72a25f179737525138c532e84d9bbe4023902870c6662806fc97830f
+  - [51] Hashing '_ZNSt10_Head_baseILm0ElLb0EE7_M_headERS0_': Addr=0x53a0, Size=47
+    - Plaintext Hash: 8b2c07913cd5a812c9acff18c64a0bcb0eac57107d5d6551f18667121b69f167
+  - [52] Hashing '_ZNSt10_Head_baseILm0ElLb0EEC2IRlEEOT_': Addr=0x5520, Size=68
+    - Plaintext Hash: 074db1c5e675f1505678513de515cd28a3326e558ed88c047f50d214f6e648c1
+  - [53] Hashing '_ZNSt10_Head_baseILm0EmLb0EE7_M_headERS0_': Addr=0x78e0, Size=47
+    - Plaintext Hash: bc17f1f6a48c0aef6b51ab2f5fd86ff7a1ed27c20bd677bceb7d034ee3618f47
+  - [54] Hashing '_ZNSt10_Head_baseILm0EmLb0EEC2IRmEEOT_': Addr=0x7a60, Size=68
+    - Plaintext Hash: bc1844102a24ffafde11fdd9f08bc9369d9b80a183b0a43901afe49fef52a500
+  - [55] Hashing '_ZNSt10_Head_baseILm1ESt14default_deleteINSt6thread6_StateEELb1EE7_M_headERS4_': Addr=0x8000, Size=47
+    - Plaintext Hash: e5de980ee01723e13732ecd84e7b67dd1042cdf3febaf9eb5d84d2a893800cc4
+  - [56] Hashing '_ZNSt10_Head_baseILm1ESt14default_deleteINSt6thread6_StateEELb1EEC2Ev': Addr=0x82d0, Size=40
+    - Plaintext Hash: f4de65583f845fdb337f5f3d87af0867eba8d01eb2e0a0cb0c5146a6c3ce3fde
+  - [57] Hashing '_ZNSt10_Head_baseILm1EiLb0EE7_M_headERS0_': Addr=0x7090, Size=47
+    - Plaintext Hash: 78212201188176e4bd73c6e5e87240bcf76594526b30829ed5e023734be33d1d
+  - [58] Hashing '_ZNSt10_Head_baseILm1EiLb0EEC2IRiEEOT_': Addr=0x7330, Size=66
+    - Plaintext Hash: f09b8eb3dc4f0676d357c4d5f7f183a15007e814f395f7fc113488fa3de8e332
+  - [59] Hashing '_ZNSt10_Head_baseILm1ElLb0EE7_M_headERS0_': Addr=0x52f0, Size=47
+    - Plaintext Hash: 6e8ed4a51e8f26bf9089b8206d9799cb344503c42fc668c3bd41cff6d6d0039f
+  - [60] Hashing '_ZNSt10_Head_baseILm1ElLb0EEC2IRlEEOT_': Addr=0x55c0, Size=68
+    - Plaintext Hash: b8823da5ff5e3231af2b66dcc5ee97d631007e3e32f993867d64595b11efca5a
+  - [61] Hashing '_ZNSt10_Head_baseILm1EmLb0EE7_M_headERS0_': Addr=0x7830, Size=47
+    - Plaintext Hash: 0caa66f33eb4fea3ade181020f60f90afd675f681972d7a1d469cbc2c6f4828f
+  - [62] Hashing '_ZNSt10_Head_baseILm1EmLb0EEC2IRmEEOT_': Addr=0x7ab0, Size=68
+    - Plaintext Hash: 00181f6bf7dacda85bf1a99468920704d3df41db023d40af8233aa34fd1aee7f
+  - [63] Hashing '_ZNSt10_Head_baseILm2EiLb0EE7_M_headERS0_': Addr=0x5ee0, Size=47
+    - Plaintext Hash: e2e4ba746650f9120031de52d6f436084863b4a747eaefef90ac287e9f93feb3
+  - [64] Hashing '_ZNSt10_Head_baseILm2EiLb0EEC2IRiEEOT_': Addr=0x6370, Size=66
+    - Plaintext Hash: f09bfa76cdef3688b1b86ce22c9438f612e18a63a7277a397428e9c3b8646e28
+  - [65] Hashing '_ZNSt10_Head_baseILm2ElLb0EE7_M_headERS0_': Addr=0x5240, Size=47
+    - Plaintext Hash: 9d5061276e12b7856c473a187390e07dcc01cffcafb68f55a653586dbb4e2741
+  - [66] Hashing '_ZNSt10_Head_baseILm2ElLb0EEC2IRlEEOT_': Addr=0x5610, Size=68
+    - Plaintext Hash: 17a9c4f1e6d5587f83aa0c6627a7dad1a219ddef1d9f4dac66c6696321efb58e
+  - [67] Hashing '_ZNSt10_Head_baseILm2EmLb0EE7_M_headERS0_': Addr=0x5810, Size=47
+    - Plaintext Hash: 03c8aec8d702754abd794cba8c887c0ff03429ac1c2e4d54c147c1193e9e987c
+  - [68] Hashing '_ZNSt10_Head_baseILm2EmLb0EEC2IRmEEOT_': Addr=0x5ae0, Size=68
+    - Plaintext Hash: 764ffcc824ab36fbd4584ddc701f39a9960fb84966e259cffeaeb6693713b796
+  - [69] Hashing '_ZNSt10_Head_baseILm3EiLb0EE7_M_headERS0_': Addr=0x60c0, Size=47
+    - Plaintext Hash: d3aff20645c875f70dd4f72fa1934cf2cf45103a2e4cb63c83e9dfde3b5fba56
+  - [70] Hashing '_ZNSt10_Head_baseILm3EiLb0EEC2IRiEEOT_': Addr=0x63c0, Size=66
+    - Plaintext Hash: cc9df1f34a74d81fb033ea98fc94ddf80ea00eef756945c5b8ebc309040f9d3d
+  - [71] Hashing '_ZNSt10_Head_baseILm3EmLb0EE7_M_headERS0_': Addr=0x6be0, Size=47
+    - Plaintext Hash: b5af591c4e10e8a721bf721cc1260d1cdfa32620e5dccdcde16b51c5888799d8
+  - [72] Hashing '_ZNSt10_Head_baseILm3EmLb0EEC2IRmEEOT_': Addr=0x6e40, Size=68
+    - Plaintext Hash: a026154f549aa0773ef95abe7bbe065ad5f9ad263305e612b578c1f6fb67d35d
+  - [73] Hashing '_ZNSt10unique_ptrINSt6thread6_StateESt14default_deleteIS1_EE11get_deleterEv': Addr=0x7e70, Size=55
+    - Plaintext Hash: c58aca0a0fca3c1dab57e0e66ebc35f64a285410682709aacb217dcbe67d4215
+  - [74] Hashing '_ZNSt10unique_ptrINSt6thread6_StateESt14default_deleteIS1_EEC2IS3_vEEPS1_': Addr=0x7d50, Size=77
+    - Plaintext Hash: d5e83fdf7763dfe0c42bcb8b576d0402bf8b0c2a9833ff96d98a86f460b28a60
+  - [75] Hashing '_ZNSt10unique_ptrINSt6thread6_StateESt14default_deleteIS1_EED2Ev': Addr=0x7dc0, Size=105
+    - Plaintext Hash: 4f6bee09eec6af9420c769cd212dd3499a1cf40fba20ea1b9ec4e2f22052cd4f
+  - [76] Hashing '_ZNSt11_Tuple_implILm0EJ16__ptrace_requestiiiEE7_M_headERS1_': Addr=0x7100, Size=59
+    - Plaintext Hash: 253c48404454baeb77af7d15a453a43a83b6e47c03546970f0876c223c12fd62
+  - [77] Hashing '_ZNSt11_Tuple_implILm0EJ16__ptrace_requestiiiEEC2IRS0_JRiS4_S4_EvEEOT_DpOT0_': Addr=0x71f0, Size=127
+    - Plaintext Hash: 50b14bbe2823992a101b5496e5cd0bbb321e7c977c1d2a1bc68a232071085a8e
+  - [78] Hashing '_ZNSt11_Tuple_implILm0EJPFvvEEE7_M_headERS2_': Addr=0x86d0, Size=55
+    - Plaintext Hash: af16ad9cd0f103996e02e7810c5e90f6aeec2745b1e01583d3852f9e00418b2a
+  - [79] Hashing '_ZNSt11_Tuple_implILm0EJPFvvEEEC2ERKS1_': Addr=0x83e0, Size=67
+    - Plaintext Hash: 944d27052a6ea6de7db68cad8f985ecd754158e4b39ab401b1fef1ae38c8b6ed
+  - [80] Hashing '_ZNSt11_Tuple_implILm0EJPNSt6thread6_StateESt14default_deleteIS1_EEE7_M_headERS5_': Addr=0x80b0, Size=55
+    - Plaintext Hash: 5f427907c5d78116bda742ec2b578499f57993e37cad60897c37cd04824f0b1b
+  - [81] Hashing '_ZNSt11_Tuple_implILm0EJPNSt6thread6_StateESt14default_deleteIS1_EEEC2Ev': Addr=0x8210, Size=60
+    - Plaintext Hash: 49c66bcbccb6182ee55faf0bb3ec4458acb6dc2d454e1fbf058ad83d104262b1
+  - [82] Hashing '_ZNSt11_Tuple_implILm0EJiliEE7_M_headERS0_': Addr=0x6680, Size=59
+    - Plaintext Hash: dee7ac5f40e477ce4c83120aa2195be0a8e8b3c6f8988c88f4ebec116bfb17e3
+  - [83] Hashing '_ZNSt11_Tuple_implILm0EJiliEEC2IRiJRlS2_EvEEOT_DpOT0_': Addr=0x6730, Size=112
+    - Plaintext Hash: 623830fe9cd1006e8ade3129484297c04d34b7602e83b04fc4dcb6b549d22c58
+  - [84] Hashing '_ZNSt11_Tuple_implILm0EJiliiEE7_M_headERS0_': Addr=0x5fd0, Size=59
+    - Plaintext Hash: a1e195498d251bcdbf7a77aaec36f31fda4b179bdd6058ffa7c7b0bd00ac873e
+  - [85] Hashing '_ZNSt11_Tuple_implILm0EJiliiEEC2IRiJRlS2_S2_EvEEOT_DpOT0_': Addr=0x6170, Size=127
+    - Plaintext Hash: e878d2f37a82e14383b4ed3453b2766e90a07828f115fa68e4e0975506b19e5a
+  - [86] Hashing '_ZNSt11_Tuple_implILm0EJillmEE7_M_headERS0_': Addr=0x6b20, Size=59
+    - Plaintext Hash: 73381c68c490bfcdb76196b362b00626b9b4ae9f0f3d82282d5a68d51fa13d7c
+  - [87] Hashing '_ZNSt11_Tuple_implILm0EJillmEEC2IRiJRlS3_RmEvEEOT_DpOT0_': Addr=0x6c90, Size=127
+    - Plaintext Hash: 590d2010dfa5adaab920e23df0b9963b935946eecb1bfa27fe7fbf2aa07c6ddd
+  - [88] Hashing '_ZNSt11_Tuple_implILm0EJlEE7_M_headERS0_': Addr=0x5c00, Size=55
+    - Plaintext Hash: aacdda55419c79f1937177e5d3197fea20dd1cebc3c21af93d385276fbec6655
+  - [89] Hashing '_ZNSt11_Tuple_implILm0EJlEEC2IRlEEOT_': Addr=0x5c90, Size=67
+    - Plaintext Hash: 1d38ba304131911b8dfd17b52194ea9d9fd4933b18032c6cc22ea63f672a85e6
+  - [90] Hashing '_ZNSt11_Tuple_implILm0EJliEE7_M_headERS0_': Addr=0x7520, Size=59
+    - Plaintext Hash: 5a0e1c825e5c8805a7cec932184e28fac0c87b87ce7f11bd66e561fe046b18d3
+  - [91] Hashing '_ZNSt11_Tuple_implILm0EJliEEC2IRlJRiEvEEOT_DpOT0_': Addr=0x75c0, Size=97
+    - Plaintext Hash: 986027b4e81bf313c993e09857bdc1e5d178c36b9dc643735a874961fd0bfd6c
+  - [92] Hashing '_ZNSt11_Tuple_implILm0EJlllEE7_M_headERS0_': Addr=0x5360, Size=59
+    - Plaintext Hash: babf4801237e08f6fff223a0973b9da5855f6274ce72086f1c5699851a63a457
+  - [93] Hashing '_ZNSt11_Tuple_implILm0EJlllEEC2IRlJS2_S2_EvEEOT_DpOT0_': Addr=0x5440, Size=112
+    - Plaintext Hash: 4a55f3280c3bc10b09535edbfddcebdea58056f1aa5afcd8c228f13eb7e4ce44
+  - [94] Hashing '_ZNSt11_Tuple_implILm0EJllmEE7_M_headERS0_': Addr=0x5900, Size=59
+    - Plaintext Hash: 3e64eda204a231da25ceae4aacb576bdde129d0161da35d8556fa289dc91a537
+  - [95] Hashing '_ZNSt11_Tuple_implILm0EJllmEEC2IRlJS2_RmEvEEOT_DpOT0_': Addr=0x59b0, Size=112
+    - Plaintext Hash: 964bf0b33bbaba41259613e92b5d3b0100870e878f63dd803e1238b75d95e74c
+  - [96] Hashing '_ZNSt11_Tuple_implILm0EJmmiEE7_M_headERS0_': Addr=0x78a0, Size=59
+    - Plaintext Hash: c2cf5cd2cae9d34eac74178e1fcd016116e2be93a9fd4a0e5574aa070cc8ac36
+  - [97] Hashing '_ZNSt11_Tuple_implILm0EJmmiEEC2IRmJS2_RiEvEEOT_DpOT0_': Addr=0x7980, Size=112
+    - Plaintext Hash: 6c9d9e3f6f64142f08847d122a8ee15da43b2ab5ba25cebc25970104b3689783
+  - [98] Hashing '_ZNSt11_Tuple_implILm1EJSt14default_deleteINSt6thread6_StateEEEE7_M_headERS4_': Addr=0x7fc0, Size=55
+    - Plaintext Hash: 20cbd76b11241725f006c9d064f382afe93a9405dd24715db112587e87ac8c80
+  - [99] Hashing '_ZNSt11_Tuple_implILm1EJSt14default_deleteINSt6thread6_StateEEEEC2Ev': Addr=0x8250, Size=49
+    - Plaintext Hash: 2e19761c649724ec4460114c18351a0575be5c535bbe41b33469c770861e14ef
+  - [100] Hashing '_ZNSt11_Tuple_implILm1EJiEE7_M_headERS0_': Addr=0x74a0, Size=55
+    - Plaintext Hash: 9af4dd0debfbd0c766c61e50cf1b8aa5f0ddbddd106c0cfa8a5a4b557a3b73f8
+  - [101] Hashing '_ZNSt11_Tuple_implILm1EJiEEC2IRiEEOT_': Addr=0x7630, Size=67
+    - Plaintext Hash: 4e6275bfe0e7b3c4fb1b3bf02829e160f134ecbba9022d29ce7021af1c7dc50e
+  - [102] Hashing '_ZNSt11_Tuple_implILm1EJiiiEE7_M_headERS0_': Addr=0x7050, Size=59
+    - Plaintext Hash: f1acfefdb49643201a9073bc7f172da5966ab58b879522c92a3ea1274c762f20
+  - [103] Hashing '_ZNSt11_Tuple_implILm1EJiiiEEC2IRiJS2_S2_EvEEOT_DpOT0_': Addr=0x7270, Size=112
+    - Plaintext Hash: 857a99c6f262c8dfb829dc3252ec5139b1c050d2d1e7a5c95f1a9cc3500e6bbc
+  - [104] Hashing '_ZNSt11_Tuple_implILm1EJliEE7_M_headERS0_': Addr=0x6600, Size=59
+    - Plaintext Hash: 5f6b593d2dad799ea52f4fa8b4030172be17e0ccf8ea5a023e84ad2de9bfffe6
+  - [105] Hashing '_ZNSt11_Tuple_implILm1EJliEEC2IRlJRiEvEEOT_DpOT0_': Addr=0x67a0, Size=97
+    - Plaintext Hash: 63dbed2048d492e817c44ccebdd999d4c26c1420285f27aa25d4c5b2c48ab8bc
+  - [106] Hashing '_ZNSt11_Tuple_implILm1EJliiEE7_M_headERS0_': Addr=0x5f50, Size=59
+    - Plaintext Hash: 793ba650892b05489f11f4623753043e52c124ef8f7b4e8bab0fa71a833a12e1
+  - [107] Hashing '_ZNSt11_Tuple_implILm1EJliiEEC2IRlJRiS3_EvEEOT_DpOT0_': Addr=0x61f0, Size=112
+    - Plaintext Hash: 353d17a2e3cf6f40dd263d15bdbb6064afdc75817bdf20a9fcd7c1ab7ed13c2d
+  - [108] Hashing '_ZNSt11_Tuple_implILm1EJllEE7_M_headERS0_': Addr=0x52b0, Size=59
+    - Plaintext Hash: 2cbe40bf1cc684735581526dce8dababe159ffabd7a9704e784ffd21eef36374
+  - [109] Hashing '_ZNSt11_Tuple_implILm1EJllEEC2IRlJS2_EvEEOT_DpOT0_': Addr=0x54b0, Size=97
+    - Plaintext Hash: 0925ebea0011d6d038d9e47a36ca0d53e89808ca6cc979dd6df8f462266a6d79
+  - [110] Hashing '_ZNSt11_Tuple_implILm1EJllmEE7_M_headERS0_': Addr=0x6aa0, Size=59
+    - Plaintext Hash: ffd33635a909753fd677ea2e1a622c4d38370a4d77ed92759df4da2776010af1
+  - [111] Hashing '_ZNSt11_Tuple_implILm1EJllmEEC2IRlJS2_RmEvEEOT_DpOT0_': Addr=0x6d10, Size=112
+    - Plaintext Hash: 1fc5eb1c03006a0a91105cfe10d4af5b1d397b9a59c8d9d4656420aac9d6f284
+  - [112] Hashing '_ZNSt11_Tuple_implILm1EJlmEE7_M_headERS0_': Addr=0x5880, Size=59
+    - Plaintext Hash: 491d23e041b43ef69e5c7281bf2786c59af59a1f4de34cb96e149e128a18eca9
+  - [113] Hashing '_ZNSt11_Tuple_implILm1EJlmEEC2IRlJRmEvEEOT_DpOT0_': Addr=0x5a20, Size=97
+    - Plaintext Hash: c749a68f56da0b16fb52ea14b61bf4334f2156a4b9bc94fae8f67ff7df0d5018
+  - [114] Hashing '_ZNSt11_Tuple_implILm1EJmiEE7_M_headERS0_': Addr=0x77f0, Size=59
+    - Plaintext Hash: 72bbdb0a44d78bd3e91df44d1c931594a5e4173ef1c4f9c645b133b10d37042a
+  - [115] Hashing '_ZNSt11_Tuple_implILm1EJmiEEC2IRmJRiEvEEOT_DpOT0_': Addr=0x79f0, Size=97
+    - Plaintext Hash: d6657120aa2898f1ecfa5f051c7dcbfe81d558f32f43928e2ced3326b88ad8a7
+  - [116] Hashing '_ZNSt11_Tuple_implILm2EJiEE7_M_headERS0_': Addr=0x6580, Size=55
+    - Plaintext Hash: ce00d32f22b33735a57f937759a5d8d90e6ab610369589157bbdadcdb8a3e43d
+  - [117] Hashing '_ZNSt11_Tuple_implILm2EJiEEC2IRiEEOT_': Addr=0x6810, Size=67
+    - Plaintext Hash: c2410290745e1732b1a7a8b6cbcee40888e29e8f2caab39a0489d5201def86a9
+  - [118] Hashing '_ZNSt11_Tuple_implILm2EJiiEE7_M_headERS0_': Addr=0x5ea0, Size=59
+    - Plaintext Hash: 0e060f647f843e7953c27ae456955af5078ae564d0c6cff6e575204b04e92f87
+  - [119] Hashing '_ZNSt11_Tuple_implILm2EJiiEEC2IRiJS2_EvEEOT_DpOT0_': Addr=0x62b0, Size=97
+    - Plaintext Hash: 1be7e6428f5341f4ea551fd50bb63f0608594d10c0f85c5629cb9bbfe67cec20
+  - [120] Hashing '_ZNSt11_Tuple_implILm2EJlEE7_M_headERS0_': Addr=0x5200, Size=55
+    - Plaintext Hash: 135acd3bf6b936057041e5e0b2b4b07d6602778da917d36761f35b74347aaf43
+  - [121] Hashing '_ZNSt11_Tuple_implILm2EJlEEC2IRlEEOT_': Addr=0x5570, Size=67
+    - Plaintext Hash: 20976ed74bb7837e9c71a18cd5039021f1712e16c67408b9a9f953155e48c29d
+  - [122] Hashing '_ZNSt11_Tuple_implILm2EJlmEE7_M_headERS0_': Addr=0x6a20, Size=59
+    - Plaintext Hash: 6b9f98a1f482f162e9b41d559dbc830137c05767dc106d763a4ef773d3fce051
+  - [123] Hashing '_ZNSt11_Tuple_implILm2EJlmEEC2IRlJRmEvEEOT_DpOT0_': Addr=0x6d80, Size=97
+    - Plaintext Hash: 9129a3a1c389d6c757ad1c9c66e7307a89b1305a6030211740935abe3a8c3a1d
+  - [124] Hashing '_ZNSt11_Tuple_implILm2EJmEE7_M_headERS0_': Addr=0x57d0, Size=55
+    - Plaintext Hash: a303636dd6680e2a7d3ac28a81627d8f82c85be1a1654316de0ed9725470a0f0
+  - [125] Hashing '_ZNSt11_Tuple_implILm2EJmEEC2IRmEEOT_': Addr=0x5a90, Size=67
+    - Plaintext Hash: 4fc59a7502d45ea32055d37903de6e1b93ddbf61a9d133dfe652c09de4f5de17
+  - [126] Hashing '_ZNSt11_Tuple_implILm3EJiEE7_M_headERS0_': Addr=0x6080, Size=55
+    - Plaintext Hash: df419b53fbbfae47e8d0464ceae00965df69b7247108abefae4802bd7715168c
+  - [127] Hashing '_ZNSt11_Tuple_implILm3EJiEEC2IRiEEOT_': Addr=0x6320, Size=67
+    - Plaintext Hash: 7eeca99846878e26c47366efb5ec93fce579e2e246664d72bfc5e5e1fb1035a7
+  - [128] Hashing '_ZNSt11_Tuple_implILm3EJmEE7_M_headERS0_': Addr=0x6ba0, Size=55
+    - Plaintext Hash: 559a4f83386200ea98b51e23d5d727ce572e0eb1f29d5b74ed7ad54fe57972ba
+  - [129] Hashing '_ZNSt11_Tuple_implILm3EJmEEC2IRmEEOT_': Addr=0x6df0, Size=67
+    - Plaintext Hash: c956118d128a2c13efb63ac4bfd6756057bef76da66cc06d8cf3533f3a0ebf28
+  - [130] Hashing '_ZNSt12_Destroy_auxILb1EE9__destroyIPhEEvT_S3_': Addr=0x8bb0, Size=54
+    - Plaintext Hash: 64e3370d8ca519b71ec4ec267864c06e0776a33f5aba4534c87d5dff87585793
+  - [131] Hashing '_ZNSt12_Vector_baseIhSaIhEE11_M_allocateEm': Addr=0x9170, Size=120
+    - Plaintext Hash: db0d8aad0d50fcf13002474e5b54a2ed21d36f9bedaaf52dc0ace4a862e39758
+  - [132] Hashing '_ZNSt12_Vector_baseIhSaIhEE12_Vector_implC2ERKS0_': Addr=0x90b0, Size=91
+    - Plaintext Hash: 33832eba3d6ba9df8e83c7e2d70b6595bd332bf863381486adca0467c8601803
+  - [133] Hashing '_ZNSt12_Vector_baseIhSaIhEE12_Vector_implD2Ev': Addr=0x8b10, Size=51
+    - Plaintext Hash: 38b5c9e6ee9f3f39752b80196d7e360cb401c2df739711539dd863acbe5a258b
+  - [134] Hashing '_ZNSt12_Vector_baseIhSaIhEE13_M_deallocateEPhm': Addr=0x8a80, Size=137
+    - Plaintext Hash: b2ee5c26ad41c9a0543f0c82f26672031a03999abf320f72008511e983385654
+  - [135] Hashing '_ZNSt12_Vector_baseIhSaIhEE17_M_create_storageEm': Addr=0x9110, Size=91
+    - Plaintext Hash: f0ca4ddb3fac9eabf6d6f45b6e10c35767b069be300969110513ce59d5f04113
+  - [136] Hashing '_ZNSt12_Vector_baseIhSaIhEE17_Vector_impl_dataC2Ev': Addr=0x9270, Size=67
+    - Plaintext Hash: f91bf37484a33a565f51574b0416d5c94e4d46f30e8db80cf019ef3c8c944b09
+  - [137] Hashing '_ZNSt12_Vector_baseIhSaIhEE19_M_get_Tp_allocatorEv': Addr=0x89b0, Size=47
+    - Plaintext Hash: 046780d68440af959907bb2f858382c00f558c4700a0c6e09be7f90fc8e44845
+  - [138] Hashing '_ZNSt12_Vector_baseIhSaIhEEC2EmRKS0_': Addr=0x8c80, Size=119
+    - Plaintext Hash: d1f8015739cbf3cc55ca185c9db94ab1d4ac7ab0def1804f74644a9cd33b5c21
+  - [139] Hashing '_ZNSt12_Vector_baseIhSaIhEED2Ev': Addr=0x8a30, Size=80
+    - Plaintext Hash: 5a331a361c146ebfcc51ab47c896e82f3bf9525e740b9581bd7280720587434c
+  - [140] Hashing '_ZNSt15__new_allocatorIcE10deallocateEPcm': Addr=0x4fc0, Size=82
+    - Plaintext Hash: acb1f5afd3f6247ee5df49e8fc7d538b42bc85ae761413bc3d65ba9824ee32ae
+  - [141] Hashing '_ZNSt15__new_allocatorIhE10deallocateEPhm': Addr=0x8b50, Size=82
+    - Plaintext Hash: e5dc734a4b658440b93487530fda3e464cebb59998f52b6a1605dbb2c302eccf
+  - [142] Hashing '_ZNSt15__new_allocatorIhE8allocateEmPKv': Addr=0x91f0, Size=128
+    - Plaintext Hash: 1ff20534c6f6ec52b87311b60fdc57aa16f8aa15d33d3f13ce1182411ded55e0
+  - [143] Hashing '_ZNSt15__uniq_ptr_dataINSt6thread6_StateESt14default_deleteIS1_ELb1ELb1EECI2St15__uniq_ptr_implIS1_S3_EEPS1_': Addr=0x8120, Size=67
+    - Plaintext Hash: 4ce99bc25509447550af72bb22ca57c49abb51fc7772ffa07ba83665f103c0d7
+  - [144] Hashing '_ZNSt15__uniq_ptr_implINSt6thread6_StateESt14default_deleteIS1_EE10_M_deleterEv': Addr=0x7f00, Size=55
+    - Plaintext Hash: 5e85091336e6152a7d05483a33886037450d59ce09e24a264886938c4e81b621
+  - [145] Hashing '_ZNSt15__uniq_ptr_implINSt6thread6_StateESt14default_deleteIS1_EE6_M_ptrEv': Addr=0x7e30, Size=55
+    - Plaintext Hash: b510581c72f2e6b5a21ab9c00b399101c0ddbc159b19de6a03cb98587770ad01
+  - [146] Hashing '_ZNSt15__uniq_ptr_implINSt6thread6_StateESt14default_deleteIS1_EEC2EPS1_': Addr=0x8170, Size=81
+    - Plaintext Hash: a3ff1c6c71fccb77f7b5a5668b93d236a6abd88825fff82e53aef60457d81c95
+  - [147] Hashing '_ZNSt19__ptr_traits_ptr_toIPKcS0_Lb0EE10pointer_toERS0_': Addr=0x5060, Size=47
+    - Plaintext Hash: 92c5a628b9b44997c4b9d2fea9dc011e7c54b3a4ac3df00ada7f404ae2323e0f
+  - [148] Hashing '_ZNSt22__uninitialized_fill_nILb1EE15__uninit_fill_nIPhmhEET_S3_T0_RKT1_': Addr=0x8e50, Size=88
+    - Plaintext Hash: 96774ef8d0f56cca7b42dc130cf607c4c136f4128546891697be421f25d7483d
+  - [149] Hashing '_ZNSt27__uninitialized_default_n_1ILb1EE18__uninit_default_nIPhmEET_S3_T0_': Addr=0x9b00, Size=122
+    - Plaintext Hash: 0a655d88beef03a45ebcee88da5db6a3fa167c1a24fd95edc9ba1efa0038c818
+  - [150] Hashing '_ZNSt5tupleIJ16__ptrace_requestiiiEEC2IJRS0_RiS4_S4_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS6_EEntcl9__danglesIS6_EEEEDpOT_': Addr=0x7170, Size=122
+    - Plaintext Hash: 9451dfabaac5bf8cabadc92dd73bc604afa748fe6551fab868b34e897cff35fe
+  - [151] Hashing '_ZNSt5tupleIJPFvvEEEC2ERKS1_Qcl15__constructibleIDpRKT_EE': Addr=0x8390, Size=77
+    - Plaintext Hash: e78bb22deaad8c803404c15418b32e3015c4618d1b412c2e0bc4a8890de76a21
+  - [152] Hashing '_ZNSt5tupleIJPNSt6thread6_StateESt14default_deleteIS1_EEEC2EvQfraa26is_default_constructible_vIT_E': Addr=0x81d0, Size=59
+    - Plaintext Hash: 5a30fa313a274d0afa5704716c877b6b478294ac20b07beea81d042334116078
+  - [153] Hashing '_ZNSt5tupleIJiliEEC2IJRiRlS2_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_': Addr=0x66c0, Size=107
+    - Plaintext Hash: 633655c14a0cd72d38382284da191418124b4b7c66f57470a8102ab96fbdc401
+  - [154] Hashing '_ZNSt5tupleIJiliiEEC2IJRiRlS2_S2_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_': Addr=0x60f0, Size=122
+    - Plaintext Hash: 3fd0cf93346b92a82adc05fd3dc29b233708ccec03544551743fd79cd40c34d0
+  - [155] Hashing '_ZNSt5tupleIJillmEEC2IJRiRlS3_RmEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS6_EEntcl9__danglesIS6_EEEEDpOT_': Addr=0x6c10, Size=122
+    - Plaintext Hash: 83436d4d7caafdb39c77b54b2f4c1be0e5bb47f662eae917cb98ccc594c4da94
+  - [156] Hashing '_ZNSt5tupleIJlEEC2IJRlEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS4_EEntcl9__danglesIS4_EEEEDpOT_': Addr=0x5c40, Size=77
+    - Plaintext Hash: a56ab1bf053cedf9ca1d94757c05ed76d221d672bd5d3c88a78b6618a38a17b8
+  - [157] Hashing '_ZNSt5tupleIJliEEC2IJRlRiEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_': Addr=0x7560, Size=92
+    - Plaintext Hash: 545a539932db36865a84ba0277a4524923efb3c27e46ed402915900c08be7416
+  - [158] Hashing '_ZNSt5tupleIJlllEEC2IJRlS2_S2_EQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS4_EEntcl9__danglesIS4_EEEEDpOT_': Addr=0x53d0, Size=107
+    - Plaintext Hash: 00214b0f0c7932033a520d8ad17546737e73fe8432448245a2fa2e320f2c2a25
+  - [159] Hashing '_ZNSt5tupleIJllmEEC2IJRlS2_RmEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_': Addr=0x5940, Size=107
+    - Plaintext Hash: 60770ccb5a70827ef73cd4c3e303705db05599c1b8a4e56a843f0ff2d6e45dff
+  - [160] Hashing '_ZNSt5tupleIJmmiEEC2IJRmS2_RiEQaaaacl27__disambiguating_constraintIDpTL0__EEcl15__constructibleIS5_EEntcl9__danglesIS5_EEEEDpOT_': Addr=0x7910, Size=107
+    - Plaintext Hash: 96011ee55ddc61a3570add5272ae97009c917a0c7bc30bd1ca3d7bcce6312c45
+  - [161] Hashing '_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEE6_M_runEv': Addr=0x8510, Size=53
+    - Plaintext Hash: 1200610f76cd0b21a5dd8de3455841e14b184185acabd4c84214301710ddd9e0
+  - [162] Hashing '_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEC2IJRS3_EEEDpOT_': Addr=0x7cf0, Size=96
+    - Plaintext Hash: c5dfce0aecb2116445b18fad04fe0143fa7ef91dad61daf080335e2d72ad0d66
+  - [163] Hashing '_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED0Ev': Addr=0x84c0, Size=65
+    - Plaintext Hash: f9f6bda2780c216ee29b1e3545694038cb83270fe13e58f7acd09d7253bd4ae2
+  - [164] Hashing '_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED2Ev': Addr=0x8480, Size=49
+    - Plaintext Hash: dd508b84b12d4bfdda3b93c406251fc531db3bce1f0aec78cc70ea6e3f7317e0
+  - [165] Hashing '_ZNSt6thread24_M_thread_deps_never_runEv': Addr=0x7da0, Size=26
+    - Plaintext Hash: 819ac0d0289ae4c3f9e7e86e7e025c34bb4c2b884d43656d071b57fefe2fb1e6
+  - [166] Hashing '_ZNSt6thread2idC2Ev': Addr=0x7c60, Size=51
+    - Plaintext Hash: a3d6f6d29bc2075484cba665e0fdc5434a42b32d3a21a65eae9c50cddd2b6640
+  - [167] Hashing '_ZNSt6thread6_StateC2Ev': Addr=0x8300, Size=58
+    - Plaintext Hash: e9822454a2f27a9d7bc1e236e42d097779c8de32b29377d9e0e44bbfe092c839
+  - [168] Hashing '_ZNSt6thread8_InvokerISt5tupleIJPFvvEEEE9_M_invokeIJLm0EEEEvSt12_Index_tupleIJXspT_EEE': Addr=0x8590, Size=60
+    - Plaintext Hash: 21d980a4e82d1b440f963406a6819f9f7790d93cc4571f7da3551df9ab602fe3
+  - [169] Hashing '_ZNSt6thread8_InvokerISt5tupleIJPFvvEEEEC2IJRS2_EEEDpOT_': Addr=0x8340, Size=75
+    - Plaintext Hash: 93df83cf6571191780f0f5cdc8dcf7152f2adc9c478788ad3cf2298b98cefca4
+  - [170] Hashing '_ZNSt6thread8_InvokerISt5tupleIJPFvvEEEEclEv': Addr=0x8550, Size=52
+    - Plaintext Hash: e154e731e6ec8879fc36d55e274cf301d42dab14db3caf2b041f99bb85990078
+  - [171] Hashing '_ZNSt6threadC2IRFvvEJEvEEOT_DpOT0_': Addr=0x7b00, Size=188
+    - Plaintext Hash: e17552be1100908df10b06a32d08cac61c31a60a50e6095dc4ba805ee97513e8
+  - [172] Hashing '_ZNSt6threadD2Ev': Addr=0x7bc0, Size=60
+    - Plaintext Hash: 4c924045ab23b29d274538e35b9acb0a7b2c4183963676cadee3f0a5d26cf4dc
+  - [173] Hashing '_ZNSt6vectorIhSaIhEE11_S_max_sizeERKS0_': Addr=0x92c0, Size=92
+    - Plaintext Hash: c0022a18246c98804f9f2cca892d1f37e418320d86c25ad40387f078ad7d0546
+  - [174] Hashing '_ZNSt6vectorIhSaIhEE11_S_relocateEPhS2_S2_RS0_': Addr=0x9810, Size=103
+    - Plaintext Hash: 090578f0283c5c1f91279ce82e5e40bfc0cb6b25964f13e1501564c9b40d6d1a
+  - [175] Hashing '_ZNSt6vectorIhSaIhEE15_M_erase_at_endEPh': Addr=0x9590, Size=145
+    - Plaintext Hash: 0f11981a7c0c5cee1d6dfccef58fb72d7a8e868e97b98f6e885bddf9da522ef2
+  - [176] Hashing '_ZNSt6vectorIhSaIhEE17_M_default_appendEm': Addr=0x93c0, Size=451
+    - Plaintext Hash: b294fe07188eb38b2bf7847a3182d9db43d92d70f58344f1c4ad7607c3ae14bd
+  - [177] Hashing '_ZNSt6vectorIhSaIhEE17_S_check_init_lenEmRKS0_': Addr=0x8bf0, Size=131
+    - Plaintext Hash: 863b36c7f06ba2b11679214ff51d4e91358635bcfeda41192a1dea412efd5013
+  - [178] Hashing '_ZNSt6vectorIhSaIhEE18_M_fill_initializeEmRKh': Addr=0x8d00, Size=113
+    - Plaintext Hash: bd56a813dd688e5bb998b6b5045561300621886ef185d602c7d02310e6422aee
+  - [179] Hashing '_ZNSt6vectorIhSaIhEE4dataEv': Addr=0x8850, Size=58
+    - Plaintext Hash: d8f77f4c5b052868e88d659539c51e8759cc8f6ccabca2abf142f9b3b0f913ef
+  - [180] Hashing '_ZNSt6vectorIhSaIhEE6resizeEm': Addr=0x8780, Size=137
+    - Plaintext Hash: 56a3237f3064978418d7e407c68685c257c8540e0194845fa38fd10622de460c
+  - [181] Hashing '_ZNSt6vectorIhSaIhEEC2EmRKhRKS0_': Addr=0x8890, Size=150
+    - Plaintext Hash: 4ad012cfd375f842ea5bcdd7651d7ae5c3b77c78cdf6f1688fc39aa67c69e9c3
+  - [182] Hashing '_ZNSt6vectorIhSaIhEED2Ev': Addr=0x8930, Size=115
+    - Plaintext Hash: 537b89367a23c5db0c63c657f7c8bc6571a0af20c8f3b18af31f847512028b9a
+  - [183] Hashing '_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm': Addr=0x4ec0, Size=140
+    - Plaintext Hash: ba0d80f71010eb8c8d3c6a0caa14a9d1e56a5863246e6aeac900471c1aca8a14
+  - [184] Hashing '_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv': Addr=0x4db0, Size=68
+    - Plaintext Hash: d712a40eee85cfd7af12c941b45e2b95cb08bfcbc20d60b7bda753c19fb6f770
+  - [185] Hashing '_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderD2Ev': Addr=0x4e00, Size=51
+    - Plaintext Hash: 92d2bbe7ed196a23d1e719cf8968d6a88ed1b0eb5870c9093184a272f0ee297b
+  - [186] Hashing '_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_get_allocatorEv': Addr=0x4f50, Size=47
+    - Plaintext Hash: 6646943999cf2b72b40716c8a9953946822c5a854243815fa5c5d866ec1eaa3b
+  - [187] Hashing '_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED2Ev': Addr=0x4d60, Size=70
+    - Plaintext Hash: 43d092fb5d6850d67396eb2ebb8b9752f2ab827a5f035b2351fb51e9fb1687aa
+  - [188] Hashing '_ZSt10_ConstructIhJEEvPT_DpOT0_': Addr=0x9b80, Size=47
+    - Plaintext Hash: 6be57be6be1261941a113eda351461506632797397515a0920df82aeb0cf1743
+  - [189] Hashing '_ZSt10__fill_n_aIPhmhET_S1_T0_RKT1_St26random_access_iterator_tag': Addr=0x8f50, Size=122
+    - Plaintext Hash: 596188bf32ef8329c57e14444556ac1a937cc724078e098a2e354962f950e5bc
+  - [190] Hashing '_ZSt10make_tupleIJR16__ptrace_requestRiS2_S2_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS6_': Addr=0x6e90, Size=114
+    - Plaintext Hash: db4aba10e6600398cc5c0a2c56ea9b3acc6c3575543d9b8fd55130ca86d688bc
+  - [191] Hashing '_ZSt10make_tupleIJRiRlS0_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_': Addr=0x6410, Size=99
+    - Plaintext Hash: eb3bc0a68905fdffd14c691db741a68a85ad0171c69e0acbe7ab199a21b67a02
+  - [192] Hashing '_ZSt10make_tupleIJRiRlS0_S0_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_': Addr=0x5ce0, Size=114
+    - Plaintext Hash: 5ad91ef6e64e892d4611d84864215290cd584943afa73813ef7096d9bc1e84ed
+  - [193] Hashing '_ZSt10make_tupleIJRiRlS1_RmEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS6_': Addr=0x6860, Size=114
+    - Plaintext Hash: 20233e548c81ae70cbf2f44b67cdda9b34db8c55017f3d815c0eec23e4bdf170
+  - [194] Hashing '_ZSt10make_tupleIJRlEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS4_': Addr=0x5b30, Size=69
+    - Plaintext Hash: 58367b16891eb10e21ca327d20ea1ce339496f665c399b938964d4b8b65d4816
+  - [195] Hashing '_ZSt10make_tupleIJRlRiEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_': Addr=0x7380, Size=84
+    - Plaintext Hash: e2bfc6d8fb7cc85e2235f1d88badf9d6e598fe8b3d28b54b46b6a1a11901bfec
+  - [196] Hashing '_ZSt10make_tupleIJRlS0_RmEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_': Addr=0x5660, Size=99
+    - Plaintext Hash: 25e3cd831a4808298d1c711ab84d864bc4f30de6e160ff30537b7ddd5e9f4a36
+  - [197] Hashing '_ZSt10make_tupleIJRlS0_S0_EESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS4_': Addr=0x5090, Size=99
+    - Plaintext Hash: f14c19963649c6d9d90a8125b7ad98bfbfe69b284301428a2211a21232541c95
+  - [198] Hashing '_ZSt10make_tupleIJRmS0_RiEESt5tupleIJDpNSt25__strip_reference_wrapperINSt5decayIT_E4typeEE6__typeEEEDpOS5_': Addr=0x7680, Size=99
+    - Plaintext Hash: 180e11c853888103f6641fc2cf23eb3dccf6e2901e64eee7656a09a8f94ff034
+  - [199] Hashing '_ZSt12__get_helperILm0E16__ptrace_requestJiiiEERT0_RSt11_Tuple_implIXT_EJS1_DpT1_EE': Addr=0x70c0, Size=55
+    - Plaintext Hash: 03112d50c30b14a857304085a13984a1ccc7c50d73a2b09b4bc517384857cbf9
+  - [200] Hashing '_ZSt12__get_helperILm0EPFvvEJEERT0_RSt11_Tuple_implIXT_EJS2_DpT1_EE': Addr=0x8690, Size=55
+    - Plaintext Hash: f4c75ec12d578f4108a26cb1fc1a26ca43df82912e357deec81cfb5c719420ca
+  - [201] Hashing '_ZSt12__get_helperILm0EPNSt6thread6_StateEJSt14default_deleteIS1_EEERT0_RSt11_Tuple_implIXT_EJS5_DpT1_EE': Addr=0x8070, Size=55
+    - Plaintext Hash: af773f50f338c777cbe2e70d23e0e628bb048b749e7c5e09454477cd4c270f64
+  - [202] Hashing '_ZSt12__get_helperILm0EiJliEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x6640, Size=55
+    - Plaintext Hash: d0b37b2bd00da5a2fae37d302f78231a85603c1b8fc07cab8b00fb95db7f082d
+  - [203] Hashing '_ZSt12__get_helperILm0EiJliiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5f90, Size=55
+    - Plaintext Hash: 06ad09ee9b04c9c1f9c761d83c48fb7a68a0dd6d5e65ab70f73f8bef35c46641
+  - [204] Hashing '_ZSt12__get_helperILm0EiJllmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x6ae0, Size=55
+    - Plaintext Hash: 775a6ad4e5268bd232cd159d1effde3344833882367f3597b195f000b2d1ec34
+  - [205] Hashing '_ZSt12__get_helperILm0ElJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5bc0, Size=55
+    - Plaintext Hash: fc6589d991df432b74c2bad62670e22357b4e19da8495650f9cc0eac05ea4ebb
+  - [206] Hashing '_ZSt12__get_helperILm0ElJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x74e0, Size=55
+    - Plaintext Hash: 62bc7298a4f33f22a208e69f74f022b1139942ce4879937c1b40b5d494e942e9
+  - [207] Hashing '_ZSt12__get_helperILm0ElJllEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5320, Size=55
+    - Plaintext Hash: 872fe403ce0a97f1f8320b4ddaf93a5cf0dcddf53f2cd91fb1d1d43f28dd2aa3
+  - [208] Hashing '_ZSt12__get_helperILm0ElJlmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x58c0, Size=55
+    - Plaintext Hash: 9f8a1ff744c3d443d701f775548a4764efdc47c6232cba78c4a441d0e5247b8f
+  - [209] Hashing '_ZSt12__get_helperILm0EmJmiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x7860, Size=55
+    - Plaintext Hash: 7e60e79b63ebb54b7e33f3bb35afa38014ba4a6c70f1547ddd73f2484f727b36
+  - [210] Hashing '_ZSt12__get_helperILm1ESt14default_deleteINSt6thread6_StateEEJEERT0_RSt11_Tuple_implIXT_EJS4_DpT1_EE': Addr=0x7f80, Size=55
+    - Plaintext Hash: 99d0ca77e8ebe8a30f6d2e80de18890a843646676d16649d863599a9f05a1a56
+  - [211] Hashing '_ZSt12__get_helperILm1EiJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x7460, Size=55
+    - Plaintext Hash: f82879bb93f4831c2697d8e8fffb0cb1d3a4e059077623d857c9b28b3eaa2a15
+  - [212] Hashing '_ZSt12__get_helperILm1EiJiiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x7010, Size=55
+    - Plaintext Hash: 08f27ca55f4ff78b87f3b206d44affeb17acd733d9694d1b0130546e6b3773f6
+  - [213] Hashing '_ZSt12__get_helperILm1ElJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x65c0, Size=55
+    - Plaintext Hash: 8d0ffde5a27d44ee11a62c6858dcf898031640ffae2b02d3b1a56f86434b06ca
+  - [214] Hashing '_ZSt12__get_helperILm1ElJiiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5f10, Size=55
+    - Plaintext Hash: 31e4f1094fe86d8edb9061faa8bd473ce9f45a0ec8fccddd2d1d4a5d5eb98a46
+  - [215] Hashing '_ZSt12__get_helperILm1ElJlEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5270, Size=55
+    - Plaintext Hash: aa639e7e586ba76c12fc48e929d1ebb37f24d43f0e82aff850d40ac986e1d2cf
+  - [216] Hashing '_ZSt12__get_helperILm1ElJlmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x6a60, Size=55
+    - Plaintext Hash: 67841fc5f6b6c0770e7399417ee8db27ffdd79b786faa0dfe9761a93bdaf950d
+  - [217] Hashing '_ZSt12__get_helperILm1ElJmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5840, Size=55
+    - Plaintext Hash: 5af7aaede7a75ac26d399e857bde6643c246be61d80f9dec10f393d67defc4f9
+  - [218] Hashing '_ZSt12__get_helperILm1EmJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x77b0, Size=55
+    - Plaintext Hash: 39c4dcf446216e149b7fc864dfe36a204b6df2704441452e113747f416f45d5a
+  - [219] Hashing '_ZSt12__get_helperILm2EiJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x6540, Size=55
+    - Plaintext Hash: a36d501ab3988b38a3b2e4342bda8ad97b271c226123253954055c3c5007b7fb
+  - [220] Hashing '_ZSt12__get_helperILm2EiJiEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5e60, Size=55
+    - Plaintext Hash: ef8196ce93e56e8bb266fdbfac37ceb104c78730c6b0966561fdbcb93b94c0c8
+  - [221] Hashing '_ZSt12__get_helperILm2ElJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x51c0, Size=55
+    - Plaintext Hash: d11e15a56d88cadd227afb9abed9cc7c7e829d01cea7e5e55b4af04f4c50b665
+  - [222] Hashing '_ZSt12__get_helperILm2ElJmEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x69e0, Size=55
+    - Plaintext Hash: a24b6fac92725e49114adce4ee226ad0f16c56941034b1fb9ee154561e8a41a4
+  - [223] Hashing '_ZSt12__get_helperILm2EmJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x5790, Size=55
+    - Plaintext Hash: 132fb2a99dfac66faa4a69e133c2f159f7596e4f1e174fc5683a1f334e233f30
+  - [224] Hashing '_ZSt12__get_helperILm3EiJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x6040, Size=55
+    - Plaintext Hash: 7b11b934e88e59c2a043014b8402e188b206a56493d24d5f6c4481c5c9aa485b
+  - [225] Hashing '_ZSt12__get_helperILm3EmJEERT0_RSt11_Tuple_implIXT_EJS0_DpT1_EE': Addr=0x6b60, Size=55
+    - Plaintext Hash: 927ee00749c27b98181f817e5bf23ff1cdc7f1f9c48bd67e75c5755dd6b8a3c5
+  - [226] Hashing '_ZSt12__niter_baseIPhET_S1_': Addr=0x9990, Size=47
+    - Plaintext Hash: 84a2d7b79cd9d61ca5f236c999be72d394c79be204353ac7c0821d199be50f96
+  - [227] Hashing '_ZSt12__relocate_aIPhS0_SaIhEET0_T_S3_S2_RT1_': Addr=0x9900, Size=133
+    - Plaintext Hash: 3f930d517c02cf8869f7bd2f6077b2c03e9547c5fc2e2b4c6befdb48e658ae98
+  - [228] Hashing '_ZSt13__invoke_implIvPFvvEJEET_St14__invoke_otherOT0_DpOT1_': Addr=0x8650, Size=49
+    - Plaintext Hash: 536f1056541d2c144578571ee5d4a413ffc02898e22a156fba7a903e69c9719e
+  - [229] Hashing '_ZSt14__relocate_a_1IhhENSt9enable_ifIXsr3std24__is_bitwise_relocatableIT_EE5valueEPS1_E4typeES2_S2_S2_RSaIT0_E': Addr=0x99c0, Size=130
+    - Plaintext Hash: 92beacaaa50605604018de3d1367a15bc162deda314786ff7ed02c56abd9156e
+  - [230] Hashing '_ZSt17__size_to_integerm': Addr=0x8f20, Size=47
+    - Plaintext Hash: dc21461b5bd42fefaad991db5bb628110798cae68e89b9a5095e61d28a355ebe
+  - [231] Hashing '_ZSt20uninitialized_fill_nIPhmhET_S1_T0_RKT1_': Addr=0x8df0, Size=92
+    - Plaintext Hash: b05403171bdcd66a6ccb7474a1b89f420e7d1c37ad50be593c26b645c4cf4a0c
+  - [232] Hashing '_ZSt24__uninitialized_fill_n_aIPhmhhET_S1_T0_RKT1_RSaIT2_E': Addr=0x8d80, Size=99
+    - Plaintext Hash: 7b6426d54b30f07f16779cd466a89d5f1dd7dddcde3dbd97eb63bd970fb62c2e
+  - [233] Hashing '_ZSt25__uninitialized_default_nIPhmET_S1_T0_': Addr=0x9ab0, Size=77
+    - Plaintext Hash: 95c31372b00f2491146177a8a86d09f1bc6b9c6a502ff153d33c2026b784b0f8
+  - [234] Hashing '_ZSt27__uninitialized_default_n_aIPhmhET_S1_T0_RSaIT1_E': Addr=0x9670, Size=84
+    - Plaintext Hash: 58739424f77babfc3b92f20742272cd3cbcd5f3d5bc5f1be0fa0f4003c605129
+  - [235] Hashing '_ZSt3getILm0EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_': Addr=0x6f50, Size=55
+    - Plaintext Hash: c0342b6ecd725ba6e408c4e755ad1d8e0bd53efb2b3373cbd0377e3fe5e1649e
+  - [236] Hashing '_ZSt3getILm0EJPFvvEEEONSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeEOS6_': Addr=0x85d0, Size=55
+    - Plaintext Hash: 643f8f16692d896a3a15dbbb1cb671c74c5607498ffe12eef9a1cc4879e1b11b
+  - [237] Hashing '_ZSt3getILm0EJPNSt6thread6_StateESt14default_deleteIS1_EEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS9_': Addr=0x8030, Size=55
+    - Plaintext Hash: e890cf842582848d76a19a547d008122c8ca5f174c57dadd7c54f2dd40fe8a1c
+  - [238] Hashing '_ZSt3getILm0EJiliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x6480, Size=55
+    - Plaintext Hash: 2539620e072edfc959fb18dfdc66489ea202b45119708186edfa4f1dd66ca384
+  - [239] Hashing '_ZSt3getILm0EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5da0, Size=55
+    - Plaintext Hash: d3e2a6b0b8bba6bd1040f003018234b5171510612760004a8324748ff16519b4
+  - [240] Hashing '_ZSt3getILm0EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x6920, Size=55
+    - Plaintext Hash: 141d05e558f74129d04f2cfcffc08dfafc1c3cbbdb767fc7040034cf3fad0b3c
+  - [241] Hashing '_ZSt3getILm0EJlEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5b80, Size=55
+    - Plaintext Hash: 258634f81315291f6b748a20986b7f2610c8bfe06b4116b070c9eef624c94d33
+  - [242] Hashing '_ZSt3getILm0EJliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x73e0, Size=55
+    - Plaintext Hash: 1f10db5967760171191b6aeae5adbd8682ccb1ea4a9860bf9fe18493011b6b53
+  - [243] Hashing '_ZSt3getILm0EJlllEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5100, Size=55
+    - Plaintext Hash: 1fda9736729b35d6b9c937da96c572e6d94782fb2b8dbdff161ad58f9b8aa6e1
+  - [244] Hashing '_ZSt3getILm0EJllmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x56d0, Size=55
+    - Plaintext Hash: cd7148cde4c7a7de17b7a74d8bd831b0325f4a18953b8be9f82a3d6948414bcb
+  - [245] Hashing '_ZSt3getILm0EJmmiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x76f0, Size=55
+    - Plaintext Hash: 4ada019db353b38777697e796db39f9a3e0a0cd2ac82e55ac6314601b088b7bb
+  - [246] Hashing '_ZSt3getILm1EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_': Addr=0x6f90, Size=55
+    - Plaintext Hash: 25a6644f95bcde14e47b85b93ba8f49351a1c3c5d5084239e721b667c0e0eade
+  - [247] Hashing '_ZSt3getILm1EJPNSt6thread6_StateESt14default_deleteIS1_EEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS9_': Addr=0x7f40, Size=55
+    - Plaintext Hash: 33c83e305c4ff3a80dccda35ee1790b7577be6fe9d7175db9e15a3e4c6965a1d
+  - [248] Hashing '_ZSt3getILm1EJiliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x64c0, Size=55
+    - Plaintext Hash: bbfffb47c52f5157d6d31c8e4b1fa0e9311b09025508376d2ddf6a74793463eb
+  - [249] Hashing '_ZSt3getILm1EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5de0, Size=55
+    - Plaintext Hash: fa20e171df3c65633ffd40484539d13abf113e0b14aae4ec8c9dee0a43d2432d
+  - [250] Hashing '_ZSt3getILm1EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x6960, Size=55
+    - Plaintext Hash: f11ab9103bb3f556a71760a1bd8ecbc8840d5dde3ab86086fc4458df7d51d225
+  - [251] Hashing '_ZSt3getILm1EJliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x7420, Size=55
+    - Plaintext Hash: b24148a7c88e202160d22be0d6b244afb90384ae9f55fd63e6927efaa7948223
+  - [252] Hashing '_ZSt3getILm1EJlllEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5140, Size=55
+    - Plaintext Hash: 8e04b1e45d8508bf041831658f31a2ce0d1e13af6b852e73d4e5580ca959600d
+  - [253] Hashing '_ZSt3getILm1EJllmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5710, Size=55
+    - Plaintext Hash: 4b58e18fd89a7ec8b4cfa4e1cf8271c6ce6b9921276d8060805864fd89bea91e
+  - [254] Hashing '_ZSt3getILm1EJmmiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x7730, Size=55
+    - Plaintext Hash: 8136800a0bcfb75d981fd4af6826b687c59d887abb9db3dd55d41b321b3fbecd
+  - [255] Hashing '_ZSt3getILm2EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_': Addr=0x6fd0, Size=55
+    - Plaintext Hash: 567b1eaba733a436e03595b7a2bb2bc36f6f7c218ff629b9e6400d231646a73c
+  - [256] Hashing '_ZSt3getILm2EJiliEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x6500, Size=55
+    - Plaintext Hash: d19f37e0bb91dd37e6b6c3bdcd18fc6d2dd3decd2f1c29941a6bd07f7809d6d4
+  - [257] Hashing '_ZSt3getILm2EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5e20, Size=55
+    - Plaintext Hash: 2c133c508e6bd494752657d0598a7c985c5865ec68841cc45d0a41d3208c1475
+  - [258] Hashing '_ZSt3getILm2EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x69a0, Size=55
+    - Plaintext Hash: 9741b3054378aed16bf544c05679ef6a361ef39c7ad8a6e7eb5357c30a77bf44
+  - [259] Hashing '_ZSt3getILm2EJlllEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5180, Size=55
+    - Plaintext Hash: 33fe62b911f068ea8542fe5dbbc49990105c735766d861201e0c5ea1e356d43f
+  - [260] Hashing '_ZSt3getILm2EJllmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5750, Size=55
+    - Plaintext Hash: 35b782bc2d9670564539d1f4e02d8824df85caf9d1f47e61b94da1850f4a77f2
+  - [261] Hashing '_ZSt3getILm2EJmmiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x7770, Size=55
+    - Plaintext Hash: c184d627a20dbaaee06c84b1988c10d3d3d3fe4c24d4d22fea476ad868450330
+  - [262] Hashing '_ZSt3getILm3EJ16__ptrace_requestiiiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS5_': Addr=0x6f10, Size=55
+    - Plaintext Hash: 86c7e0fce304843bbea07216d66e692ea28a5064b4eb820ced636bdc85781a83
+  - [263] Hashing '_ZSt3getILm3EJiliiEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x5d60, Size=55
+    - Plaintext Hash: 10f178dcb6726d7f969cf9e644446ab96c30196ca2b59d19f68a68b8dbd07c75
+  - [264] Hashing '_ZSt3getILm3EJillmEERNSt13tuple_elementIXT_ESt5tupleIJDpT0_EEE4typeERS4_': Addr=0x68e0, Size=55
+    - Plaintext Hash: 510555ac9984f9eedf2cca4b2f19690fcf50b73ded302b352f66f56f07c26ea0
+  - [265] Hashing '_ZSt3maxImERKT_S2_S2_': Addr=0x9a50, Size=95
+    - Plaintext Hash: ff2ecfd7669eec579339f5168ffa12cd51b8934f02148b8a1f912921251635a3
+  - [266] Hashing '_ZSt3minImERKT_S2_S2_': Addr=0x9320, Size=95
+    - Plaintext Hash: 620a106f93ce22be45dfbf6a8c7fb2f4ddd806f8a16da3bb09e722d213e6c8a7
+  - [267] Hashing '_ZSt6fill_nIPhmhET_S1_T0_RKT1_': Addr=0x8eb0, Size=107
+    - Plaintext Hash: 783dd2a1bc06b8aeeee2979050b8c161d75500d9515749b613f47e9d241ac90f
+  - [268] Hashing '_ZSt8_DestroyIPhEvT_S1_': Addr=0x89e0, Size=67
+    - Plaintext Hash: da3e9472ffe8d07d7ba98bd71080bbc968b425d197bcee2dfb3900524b44b4df
+  - [269] Hashing '_ZSt8__fill_aIPhhEvT_S1_RKT0_': Addr=0x8fd0, Size=82
+    - Plaintext Hash: 71adb5e6bd8cbafffb926bd3ea2fe867c31071389341b1dc808792b2b5ef3e94
+  - [270] Hashing '_ZSt8__invokeIPFvvEJEENSt15__invoke_resultIT_JDpT0_EE4typeEOS3_DpOS4_': Addr=0x8610, Size=52
+    - Plaintext Hash: 97ccd99a7b850e7b4923627e6b7782048011b128146c039a970d94048874dc56
+  - [271] Hashing '_ZSt9__fill_a1IhEN9__gnu_cxx11__enable_ifIXsr9__is_byteIT_EE7__valueEvE6__typeEPS2_S5_RKS2_': Addr=0x9030, Size=116
+    - Plaintext Hash: 390ce80e538877590bc22bda5b0d1df53e211151a47807c40d84b1fc3fcac70f
+  - [272] Hashing '_ZSteqNSt6thread2idES0_': Addr=0x7ca0, Size=70
+    - Plaintext Hash: 026439e4d2f0e93fd42f235746d3ca3e388210bf622af453f45a683b1770e811
+  - [273] Hashing '_ZZNSt6vectorIhSaIhEE17_M_default_appendEmEN6_GuardC2EPhmRS0_': Addr=0x97a0, Size=103
+    - Plaintext Hash: 54231835ba569bd0091388506d12a5072f1e9712d9afd0eb04f247dbfabb0403
+  - [274] Hashing '_ZZNSt6vectorIhSaIhEE17_M_default_appendEmEN6_GuardD2Ev': Addr=0x9880, Size=121
+    - Plaintext Hash: 60398132f5b4c0695a102bbcb260be66562f6f27bc41a4ae5404e0ff5a1aa62b
+  - [275] Hashing '__aead_xchacha20_poly1305_decrypt': Addr=0x2e60, Size=525
+    - Plaintext Hash: eb4ef1aa5678349f9dd894ca93e0d8a5eb1dce34e58e9dd242d7981e674da7de
+  - [276] Hashing '__clang_call_terminate': Addr=0x4e40, Size=14
+    - Plaintext Hash: 2692702eb752fa048bd98d59555bc00e98dafbea264e4dce5e01d0ba1e6e1d28
+  - [277] Hashing '__cxx_global_var_init': Addr=0x2220, Size=31
+    - Plaintext Hash: 083fd87d5c0c12f9c7bf2d31b86479441f8371df724d5f8435bb7c031fa2a7c4
+  - [278] Hashing '__tsx_tamper_handler': Addr=0x3330, Size=9
+    - Plaintext Hash: 56b5e773d3c91dbceb540581750726a243aeb3583a8dec1a6e76ad33986bd729
+  - [279] Hashing 'main': Addr=0x2370, Size=136
+    - Plaintext Hash: b57a49f0027a9016b2dfb11526b96ad4cfc19e59d611c99993de30d32bbf7794
+  - Processed and packed info for 280 of 280 functions.
+[*] Verifying bytearray content before writing...
+  - Verification for index 31:
+    - Raw bytes in buffer: 204d0000000000003500000000000000068687e32ff08d747be9127d86e3787c042eef7194856e705b888dff1ba99198517f558c2cd680581218e016f5545fa4d635063895e98c1072ba452e69b2426a4e8be793326683ca
+    - Unpacked Addr from buffer: 0x4d20, Unpacked Size: 53
+    - [OK] Bytearray content matches expected values.
+[*] Writing calculated data back to the executable...
+  - Wrote master key to section .ic_key
+  - Wrote encrypted .text hash to section .ic_texthash
+  - Wrote 280 entries to section .ic_functable
+[+] Activation complete. The executable is now ready to run.

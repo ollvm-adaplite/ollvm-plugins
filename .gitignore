@@ -1,0 +1,10 @@
+#vscode
+.history/*
+
+
+# builde
+build/*
+*.out
+
+# test file
+charge_test.out.*
