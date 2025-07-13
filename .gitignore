@@ -8,3 +8,10 @@ build/*
 
 # test file
 charge_test.out.*
+
+*.so
+*.so.*
+*.dylib
+*.dll
+
+*.log*

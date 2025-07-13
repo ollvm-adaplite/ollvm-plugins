@@ -1,6 +1,0 @@
-[*] Processing executable: ./charge_test.out
-[*] Locating required sections...
-  - Found '.ic_texthash,aw' (as '.ic_texthash') at file offset 295444, size 72
-  - Found '.ic_key,aw' (as '.ic_key') at file offset 295520, size 32
-  - Found '.ic_functable,aw' (as '.ic_functable') at file offset 295552, size 18216
-[!] Error: Section '.ic_markers' not found. Is the program compiled with the correct pass?
