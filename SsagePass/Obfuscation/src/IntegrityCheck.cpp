@@ -222,7 +222,7 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
     protectedFuncs.push_back(&F);
   }
 
-  // 关键：排序以确保 Pass 和 Python 脚本的顺序一致
+  // 排序以确保 Pass 和 Python 脚本的顺序一致
   std::sort(protectedFuncs.begin(), protectedFuncs.end(),
             [](const Function *A, const Function *B) {
               return A->getName() < B->getName();
@@ -233,7 +233,7 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
 
   // --- 3. 创建所有占位符和新的标记表 ---
 
-  // --- START OF NEW IMPLEMENTATION: The Marker Table ---
+  
 
   // 1. 定义标记结构体类型: struct FuncMarker { const char* name; const void*
   // addr; };
@@ -275,8 +275,7 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
   auto *markerTableGV =
       new GlobalVariable(M, MarkerTableTy, true, GlobalValue::ExternalLinkage,
                          MarkerTableInitializer, "__ic_function_marker_table");
-  markerTableGV->setSection(
-      ".ic_markers,a,progbits"); // 'a'=alloc, 'progbits'=contains data
+  markerTableGV->setSection(".ic_markers,a"); // 移除 'w' 标志，设为只读
 
   // --- END OF NEW IMPLEMENTATION ---
 
@@ -305,12 +304,12 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
     textHashGV->setLinkage(GlobalValue::WeakODRLinkage);
     textHashGV->setInitializer(ConstantAggregateZero::get(EncryptedHashTy));
   } else {
-    textHashGV = new GlobalVariable(M, EncryptedHashTy, false,
+    textHashGV = new GlobalVariable(M, EncryptedHashTy, true,
                                     GlobalValue::WeakODRLinkage,
                                     ConstantAggregateZero::get(EncryptedHashTy),
                                     "__text_section_encrypted_hash");
   }
-  textHashGV->setSection(".ic_texthash,aw");
+  textHashGV->setSection(".ic_texthash,a"); // 移除 'w' 标志，设为只读
 
   // 处理 __integrity_check_key (类型匹配，可以直接修改)
   Type *KeyTy = ArrayType::get(Type::getInt8Ty(Ctx), 32);
@@ -319,11 +318,11 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
     keyGV->setLinkage(GlobalValue::WeakODRLinkage);
     keyGV->setInitializer(ConstantAggregateZero::get(KeyTy));
   } else {
-    keyGV = new GlobalVariable(M, KeyTy, false, GlobalValue::WeakODRLinkage,
+    keyGV = new GlobalVariable(M, KeyTy, true, GlobalValue::WeakODRLinkage,
                                ConstantAggregateZero::get(KeyTy),
                                "__integrity_check_key");
   }
-  keyGV->setSection(".ic_key,aw");
+  keyGV->setSection(".ic_key,a"); // 移除 'w' 标志，设为只读
 
   // 处理 __protected_funcs_info_table (类型不匹配，必须安全替换)
   // --- START OF CHANGE ---
@@ -376,7 +375,7 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
           M.getGlobalVariable("__protected_funcs_info_table")) {
     // 1. 创建新的、类型正确的全局变量，使用临时名称
     auto *NewGV = new GlobalVariable(
-        M, InfoTableTy, false, GlobalValue::WeakODRLinkage, TableInitializer,
+        M, InfoTableTy, true, GlobalValue::WeakODRLinkage, TableInitializer,
         "__protected_funcs_info_table_new");
 
     // 2. 将所有对旧变量的引用替换为对新变量的引用（通过bitcast保持类型兼容）
@@ -394,10 +393,10 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
   } else {
     // Fallback: 如果弱符号不存在，直接创建
     tableGV =
-        new GlobalVariable(M, InfoTableTy, false, GlobalValue::WeakODRLinkage,
+        new GlobalVariable(M, InfoTableTy, true, GlobalValue::WeakODRLinkage,
                            TableInitializer, "__protected_funcs_info_table");
   }
-  tableGV->setSection(".ic_functable,aw");
+  tableGV->setSection(".ic_functable,a"); // 移除 'w' 标志，设为只读
 
   // // 函数名列表 (.ic_fnames) 现在是可选的
   // std::string name_blob;
@@ -407,8 +406,8 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
   // }
   // ArrayType *NameListTy =
   //     ArrayType::get(Type::getInt8Ty(Ctx), name_blob.size());
-  // Constant *NameListData = ConstantDataArray::getString(Ctx, name_blob, false);
-  // auto *nameListGV =
+  // Constant *NameListData = ConstantDataArray::getString(Ctx, name_blob,
+  // false); auto *nameListGV =
   //     new GlobalVariable(M, NameListTy, true, GlobalValue::WeakODRLinkage,
   //                        NameListData, "__protected_funcs_name_list");
 
@@ -419,7 +418,7 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
   // nameListGV->setSection(".ic_fnames,a");
   // // --- END OF CHANGE 4 ---
 
-    appendToUsed(M, {textHashGV, keyGV, tableGV, markerTableGV});
+  appendToUsed(M, {textHashGV, keyGV, tableGV, markerTableGV});
 
   // --- 4. 注入静态校验逻辑 (不变) ---
   FunctionCallee VerifySelfFunc =

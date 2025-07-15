@@ -1,6 +1,7 @@
 import argparse
 import os
 import struct
+# 移除了不再需要的 subprocess
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from Crypto.Cipher import ChaCha20_Poly1305
@@ -47,7 +48,6 @@ def encrypt_hash(key: bytes, plaintext_hash: bytes, aad: bytes = b'') -> bytes:
     """
     nonce = os.urandom(24)  # XChaCha20 需要 24 字节的 nonce
     cipher = ChaCha20_Poly1305.new(key=key, nonce=nonce)
-    # --- FIX: Add AAD to the cipher ---
     if aad:
         cipher.update(aad)
     ciphertext, tag = cipher.encrypt_and_digest(plaintext_hash)
@@ -59,55 +59,51 @@ def main(executable_path, debug=False):
     print(f"[*] Processing executable: {executable_path}")
 
     with open(executable_path, 'r+b') as f:
-        # --- NEW: Calculate AAD for .text section based on file content ---
-        # This is done on the file *before* modification. This assumes that
-        # the modifications made later (writing key/hashes) do not change
-        # the outcome of this calculation (e.g., they happen far from the
-        # file's midpoint).
+        sections = {}
+
+        # --- AAD 计算逻辑 ---
+        # 由于我们只是清零节区，文件总大小不变，此处的 AAD 计算是正确的
         f.seek(0)
         file_content = f.read()
         file_size = len(file_content)
         
-        # Find the first non-zero byte searching backwards from the middle
         mid_index = file_size // 2
         the_byte_val = 0
         found_byte_offset = -1
-        # Start searching from mid_index down to the beginning of the file
         for i in range(mid_index, -1, -1):
             if file_content[i] != 0:
                 the_byte_val = file_content[i]
                 found_byte_offset = i
                 break
         
-        # Per user request, AAD is (the_byte * file_size) packed as uint64
         aad_value = the_byte_val * file_size
         text_section_aad = struct.pack('<Q', aad_value)
         
         if debug:
             print(f"[*] Calculated AAD for .text: byte=0x{the_byte_val:x} at offset {found_byte_offset}, size={file_size}, aad_val={aad_value}")
         
-        # Reset stream for ELFFile processing
         f.seek(0)
-        # --- END NEW ---
-
+        
         elf = ELFFile(f)
 
         # 1. 查找所有必需的节
         print("[*] Locating required sections...")
-        sections = {}
-        # 更新需要查找的节列表
         sec_names_to_find = [KEY_SECTION_NAME, TEXT_HASH_SECTION_NAME, FUNC_TABLE_SECTION_NAME, MARKER_SECTION_NAME]
-        
         remaining_sections_to_find = set(sec_names_to_find)
-        
         for section in elf.iter_sections():
+            # 使用一个副本进行迭代，以便安全地从原集合中删除
             for sec_name_base in list(remaining_sections_to_find):
-                if section.name == sec_name_base or section.name.startswith(sec_name_base + ','):
+                # 显式检查可能的节名称变体，以提高清晰度
+                # 1. 精确匹配 (例如, .ic_key)
+                # 2. 匹配只读变体 (例如, .ic_key,a)
+                # 3. 匹配旧的可写变体 (例如, .ic_key,aw) - 为了向后兼容
+                if section.name == sec_name_base or \
+                   section.name == f"{sec_name_base},a" or \
+                   section.name == f"{sec_name_base},aw":
                     sections[sec_name_base] = section
                     print(f"  - Found '{section.name}' (as '{sec_name_base}') at file offset {section['sh_offset']}, size {section['sh_size']}")
                     remaining_sections_to_find.remove(sec_name_base)
                     break
-
         if remaining_sections_to_find:
             for sec_name in remaining_sections_to_find:
                 print(f"[!] Error: Section '{sec_name}' not found. Is the program compiled with the correct pass?")
@@ -242,22 +238,58 @@ def main(executable_path, debug=False):
         print(f"  - Processed and packed info for {len(packed_valid_entries)} functions.")
         print(f"  - Final table size: {len(final_data_blob)} bytes ({len(packed_valid_entries) + 1} entries).")
 
-        # 8. 将所有计算好的数据写回文件
+        # 8. 将所有计算好的数据写回文件 (逻辑不变)
         print("[*] Writing calculated data back to the executable...")
-        
         f.seek(sections[KEY_SECTION_NAME]['sh_offset'])
         f.write(master_key)
         print(f"  - Wrote master key to section {KEY_SECTION_NAME}")
-
         f.seek(sections[TEXT_HASH_SECTION_NAME]['sh_offset'])
         f.write(encrypted_text_hash_struct)
         print(f"  - Wrote encrypted text hash to section {TEXT_HASH_SECTION_NAME}")
-
         f.seek(sections[FUNC_TABLE_SECTION_NAME]['sh_offset'])
         f.write(final_data_blob)
         print(f"  - Wrote {len(final_data_blob) // FUNC_INFO_SIZE} entries to section {FUNC_TABLE_SECTION_NAME}")
 
+        # 9. 清理步骤: 将不再需要的 .ic_markers 节内容清零
+        # 使用同一个、仍然打开的文件句柄 'f' 来完成操作
+        print("[*] Attempting to clean up marker section...")
+
+        # 使用更灵活的方式查找标记节区
+        marker_section = None
+        for section in elf.iter_sections():
+            # 匹配任何以 .ic_markers 开头的节区（考虑链接器可能添加的后缀）
+            if section.name.startswith(".ic_markers"):
+                marker_section = section
+                print(f"  - Found marker section: '{section.name}'")
+                break
+
+        if marker_section:
+            section_offset = marker_section['sh_offset']
+            section_size = marker_section['sh_size']
+            
+            print(f"[*] Cleaning up: Overwriting '{marker_section.name}' section with zeros...")
+            print(f"    Section offset: 0x{section_offset:x}, size: {section_size} bytes")
+            
+            if section_size > 0:
+                # 确保我们在当前文件位置进行写入
+                f.seek(section_offset)
+                zeros = b'\x00' * section_size
+                bytes_written = f.write(zeros)
+                f.flush()  # 强制刷新到磁盘
+                
+                # 验证写入是否成功
+                f.seek(section_offset)
+                verification_data = f.read(section_size)
+                if all(b == 0 for b in verification_data):
+                    print(f"[+] Successfully zeroed out '{marker_section.name}'. Verified {bytes_written} bytes are now zero.")
+                else:
+                    print(f"[!] WARNING: Failed to zero out section. First few bytes: {verification_data[:16].hex()}")
+                    print("    This might indicate a file permission or caching issue.")
+        else:
+            print("[!] Warning: Could not find any marker section. Skipping cleanup step.")
+
     print("[+] Activation complete. The executable is now ready to run.")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Activates integrity checks in a compiled executable using a marker table.")
