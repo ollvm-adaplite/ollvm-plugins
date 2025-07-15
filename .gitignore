@@ -5,6 +5,7 @@
 # builde
 build/*
 *.out
+*.out*
 
 # test file
 charge_test.out.*
