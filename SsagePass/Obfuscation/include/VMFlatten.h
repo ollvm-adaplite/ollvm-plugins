@@ -46,7 +46,7 @@ struct VMInst {
 class VMFlattenPass : public PassInfoMixin<VMFlattenPass> {
 public:
   bool flag;
-  int opt_level = 0; // 优化级别
+  int opt_level = 1; // 优化级别
 
   VMFlattenPass(bool flag) { this->flag = flag; } // 携带flag的构造函数
   VMFlattenPass(bool flag, int optLevel) {

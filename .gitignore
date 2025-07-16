@@ -16,3 +16,4 @@ charge_test.out.*
 *.dll
 
 *.log*
+build_crypto_runtime/
