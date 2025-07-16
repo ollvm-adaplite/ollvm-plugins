@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10.0)
 project(llvmpass VERSION 0.1.0 LANGUAGES C CXX)
 
 # 添加子目录
-add_subdirectory(SsagePass/Obfuscation/black3)
+add_subdirectory(SsagePass/Obfuscation/blake3/c)
 
 #set(LLVM_DIR "/home/ljs/oritestinstall")
 #set(LLVM_DIR "/home/ljs/oritestinstall/bin")
@@ -62,7 +62,8 @@ target_compile_definitions(LLVMHello PRIVATE ${LLVM_DEFINITIONS} LLVM_ENABLE_DUM
 # 添加包含目录：LLVM头文件 + 自定义Obfuscation头文件
 target_include_directories(LLVMHello PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/include # 项目的 Obfuscation 头文件目录放在前面
-    ${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation_lld/black3 # 添加 blake3.h 的路径
+    # 下面这行是多余且错误的，因为 target_link_libraries(BLAKE3::blake3) 会自动处理
+    # ${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation_lld/black3 
     ${LLVM_INCLUDE_DIRS} # LLVM 的标准头文件目录放在后面
 )
 
@@ -99,7 +100,7 @@ add_custom_target(crypto_runtime
         -emit-llvm -c ${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/src/crypto_runtime.cpp
         -o ${CMAKE_BINARY_DIR}/crypto_runtime.bc
         -I${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/include
-        -I${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/black3
+        -I${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/blake3/c
     # 步骤 2: 确保目标目录存在
     COMMAND ${CMAKE_COMMAND} -E make_directory "$ENV{HOME}/.ollvm"
     # 步骤 3: 复制生成的 .bc 文件到目标位置
