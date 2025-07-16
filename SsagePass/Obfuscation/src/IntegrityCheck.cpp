@@ -181,9 +181,9 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
 
   // 定义一个函数名黑名单。包含这些子串的函数将被忽略，以避免链接问题。
   const std::vector<StringRef> nameBlacklist = {
-      "allocat", "deallocat",
-      "stringbuf", // 针对 std::basic_stringbuf
-                               // 您可以根据遇到的链接错误，向这个列表添加更多关键字
+      "allocat", "deallocat", "stringbuf", "gthread",
+      "thread" // 针对 std::basic_stringbuf
+               // 您可以根据遇到的链接错误，向这个列表添加更多关键字
   };
 
   // 规则1：跳过函数声明、我们自己的校验/运行时函数，以及被注解的函数
@@ -232,8 +232,6 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
              protectedFuncs.size());
 
   // --- 3. 创建所有占位符和新的标记表 ---
-
-  
 
   // 1. 定义标记结构体类型: struct FuncMarker { const char* name; const void*
   // addr; };
@@ -336,67 +334,54 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
   }
   // --- END OF CHANGE ---
 
-  // --- FIX: Allocate enough space for the worst-case scenario ---
-  // The table must be large enough to hold all candidate functions plus one
-  // terminator.
+  // --- FIX: Allocate enough space for the worst-case scenario, including
+  // encryption overhead --- The final blob is: u64 size + 24B nonce + 16B tag +
+  // encrypted_data The encrypted_data has the same size as the plaintext table.
+  const size_t ENCRYPTION_OVERHEAD = 8 + 24 + 16; // 48 bytes
+  // This must match the size defined in encheck.py
+  const size_t FUNC_INFO_SIZE = 8 + 8 + (32 + 24 + 16); // 88 bytes
+  const size_t num_entries = protectedFuncs.size() + 1; // +1 for terminator
+  const size_t plaintext_table_size = num_entries * FUNC_INFO_SIZE;
+  const size_t total_required_size = plaintext_table_size + ENCRYPTION_OVERHEAD;
+
+  // We will allocate a raw byte array of the required size.
   ArrayType *InfoTableTy =
-      ArrayType::get(FuncInfoTy, protectedFuncs.size() + 1);
+      ArrayType::get(Type::getInt8Ty(Ctx), total_required_size);
 
-  // 核心修复：创建一个非零的初始化器来填充表格。
-  // 这可以防止链接器将 .ic_functable 节优化为 .bss
-  // 节（只在内存中，不从文件加载）。
-  // 通过提供非零的初始数据，我们强制链接器将其作为 .data 节处理，
-  // 确保 encheck.py 写入的数据在程序启动时被加载到内存。
-
-  // 1. 为 encrypted_hash 创建一个虚拟的非零常量
-  Constant *dummyEncHash = ConstantStruct::get(
-      EncryptedHashTy,
-      {ConstantDataArray::get(
-           Ctx, ArrayRef<uint8_t>(std::vector<uint8_t>(32, 0xAA))),
-       ConstantDataArray::get(
-           Ctx, ArrayRef<uint8_t>(std::vector<uint8_t>(24, 0xBB))),
-       ConstantDataArray::get(
-           Ctx, ArrayRef<uint8_t>(std::vector<uint8_t>(16, 0xCC)))});
-
-  // 2. 为 protected_func_info 创建一个虚拟的非零常量
-  Constant *dummyFuncInfo = ConstantStruct::get(
-      FuncInfoTy, {ConstantInt::get(Type::getInt64Ty(Ctx), 1), // dummy addr
-                   ConstantInt::get(Type::getInt64Ty(Ctx), 1), // dummy size
-                   dummyEncHash});
-
-  // 3. 创建一个由虚拟条目组成的数组，以填充整个预留空间
-  std::vector<Constant *> dummyTableEntries(protectedFuncs.size() + 1,
-                                            dummyFuncInfo);
-  Constant *TableInitializer =
-      ConstantArray::get(InfoTableTy, dummyTableEntries);
+  // Using a zero initializer is fine since the section is marked read-only,
+  // preventing the linker from moving it to .bss.
+  Constant *TableInitializer = ConstantAggregateZero::get(InfoTableTy);
 
   GlobalVariable *tableGV;
   if (GlobalVariable *OldGV =
           M.getGlobalVariable("__protected_funcs_info_table")) {
-    // 1. 创建新的、类型正确的全局变量，使用临时名称
+    // 1. Create new, correctly-sized global variable with a temporary name
     auto *NewGV = new GlobalVariable(
         M, InfoTableTy, true, GlobalValue::WeakODRLinkage, TableInitializer,
         "__protected_funcs_info_table_new");
 
-    // 2. 将所有对旧变量的引用替换为对新变量的引用（通过bitcast保持类型兼容）
+    // 2. Replace all uses of the old variable with the new one.
+    // The runtime code casts this symbol's address, so we must cast the new
+    // symbol's address back to the old type to maintain compatibility.
     if (!OldGV->use_empty()) {
       Constant *CastedNewGV = ConstantExpr::getBitCast(NewGV, OldGV->getType());
       OldGV->replaceAllUsesWith(CastedNewGV);
     }
 
-    // 3. 现在可以安全地删除旧变量了
+    // 3. Now that it has no uses, the old variable can be safely removed.
     OldGV->eraseFromParent();
 
-    // 4. 将新变量重命名为最终名称
+    // 4. Rename the new variable to the final, expected name.
     NewGV->setName("__protected_funcs_info_table");
     tableGV = NewGV;
   } else {
-    // Fallback: 如果弱符号不存在，直接创建
+    // Fallback: If the weak symbol from the runtime wasn't found, create it
+    // directly.
     tableGV =
         new GlobalVariable(M, InfoTableTy, true, GlobalValue::WeakODRLinkage,
                            TableInitializer, "__protected_funcs_info_table");
   }
-  tableGV->setSection(".ic_functable,a"); // 移除 'w' 标志，设为只读
+  tableGV->setSection(".ic_functable,a"); // Mark as read-only data
 
   // // 函数名列表 (.ic_fnames) 现在是可选的
   // std::string name_blob;

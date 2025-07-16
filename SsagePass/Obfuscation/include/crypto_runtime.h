@@ -42,6 +42,8 @@ int NO_IC_INSTRUMENT __aead_xchacha20_poly1305_decrypt(
 void NO_IC_INSTRUMENT __verify_self_integrity();
 void NO_IC_INSTRUMENT __verify_memory_integrity(const void *function_addr);
 [[noreturn]] void NO_IC_INSTRUMENT __tsx_tamper_handler();
+
 }
+static uintptr_t NO_IC_INSTRUMENT get_program_base_address() ;
 
 #endif // CRYPTO_RUNTIME_H

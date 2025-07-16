@@ -12,7 +12,7 @@ from blake3 import blake3
 KEY_SECTION_NAME = ".ic_key"
 TEXT_HASH_SECTION_NAME = ".ic_texthash"
 FUNC_TABLE_SECTION_NAME = ".ic_functable"
-# 新的权威信息来源：标记表
+# 权威信息来源：标记表 (现在使用简化的名称)
 MARKER_SECTION_NAME = ".ic_markers"
 
 # C 结构体大小 (必须与 C++ 代码中的定义匹配)
@@ -54,6 +54,21 @@ def encrypt_hash(key: bytes, plaintext_hash: bytes, aad: bytes = b'') -> bytes:
     
     # 按照 C 结构体的顺序打包: ciphertext[32], nonce[24], tag[16]
     return struct.pack(f'<32s24s16s', ciphertext, nonce, tag)
+
+def encrypt_blob(key: bytes, plaintext: bytes, aad: bytes = b'') -> bytes:
+    """
+    使用给定的密钥、随机 Nonce 和 AAD 加密一个数据块。
+    返回一个 bytes 对象，其布局为:
+    uint64_t plaintext_size | uint8_t nonce[24] | uint8_t tag[16] | uint8_t[] ciphertext
+    """
+    nonce = os.urandom(24)  # XChaCha20 需要 24 字节的 nonce
+    cipher = ChaCha20_Poly1305.new(key=key, nonce=nonce)
+    if aad:
+        cipher.update(aad)
+    ciphertext, tag = cipher.encrypt_and_digest(plaintext)
+    
+    # 按照 [大小][nonce][tag][密文] 的顺序打包
+    return struct.pack(f'<Q24s16s', len(plaintext), nonce, tag) + ciphertext
 
 def main(executable_path, debug=False):
     print(f"[*] Processing executable: {executable_path}")
@@ -161,13 +176,21 @@ def main(executable_path, debug=False):
         # The final table will contain all valid functions plus one terminator entry.
         final_table_entry_count = len(valid_funcs_info) + 1
         
-        # 4. 验证函数表空间是否足够 (This check is now less critical, but good to have)
+        # 4. 验证函数表空间是否足够
         table_section = sections[FUNC_TABLE_SECTION_NAME]
-        if table_section['sh_size'] < final_table_entry_count * FUNC_INFO_SIZE:
+        
+        # --- FIX: Update size calculation to include encryption overhead ---
+        # The final blob is: u64 size + 24B nonce + 16B tag + ciphertext
+        encryption_overhead = 8 + 24 + 16 # 48 bytes
+        plaintext_table_size = final_table_entry_count * FUNC_INFO_SIZE
+        required_size = plaintext_table_size + encryption_overhead
+
+        if table_section['sh_size'] < required_size:
             print(f"[!] FATAL: Section '{FUNC_TABLE_SECTION_NAME}' is too small.")
-            print(f"    Required: {final_table_entry_count * FUNC_INFO_SIZE} bytes, Found: {table_section['sh_size']} bytes.")
+            print(f"    Required: {required_size} bytes, Found: {table_section['sh_size']} bytes.")
+            print(f"    This likely means the number of functions detected by the Pass and the script differ.")
             return
-        print(f"  - Capacity check passed: Table has enough space for {final_table_entry_count} entries.")
+        print(f"  - Capacity check passed: Table has enough space for the encrypted blob ({required_size} bytes).")
 
         # 5. 生成主加密密钥
         master_key = os.urandom(32)
@@ -236,7 +259,18 @@ def main(executable_path, debug=False):
         final_data_blob = b''.join(packed_valid_entries) + (b'\x00' * FUNC_INFO_SIZE)
 
         print(f"  - Processed and packed info for {len(packed_valid_entries)} functions.")
-        print(f"  - Final table size: {len(final_data_blob)} bytes ({len(packed_valid_entries) + 1} entries).")
+        print(f"  - Plaintext table size: {len(final_data_blob)} bytes ({len(packed_valid_entries) + 1} entries).")
+
+        # --- NEW: 应用第二层加密保护整个函数表 ---
+        print("[*] Applying second layer of encryption to the function table...")
+        # AAD 是 .ic_texthash 节内容的哈希值
+        functable_aad = blake3(encrypted_text_hash_struct).digest()
+        encrypted_functable_blob = encrypt_blob(master_key, final_data_blob, aad=functable_aad)
+        
+        if debug:
+            print(f"  - AAD for table (hash of .ic_texthash content): {functable_aad.hex()}")
+            print(f"  - Final encrypted table blob size: {len(encrypted_functable_blob)} bytes")
+
 
         # 8. 将所有计算好的数据写回文件 (逻辑不变)
         print("[*] Writing calculated data back to the executable...")
@@ -247,8 +281,8 @@ def main(executable_path, debug=False):
         f.write(encrypted_text_hash_struct)
         print(f"  - Wrote encrypted text hash to section {TEXT_HASH_SECTION_NAME}")
         f.seek(sections[FUNC_TABLE_SECTION_NAME]['sh_offset'])
-        f.write(final_data_blob)
-        print(f"  - Wrote {len(final_data_blob) // FUNC_INFO_SIZE} entries to section {FUNC_TABLE_SECTION_NAME}")
+        f.write(encrypted_functable_blob)
+        print(f"  - Wrote encrypted function table ({len(encrypted_functable_blob)} bytes) to section {FUNC_TABLE_SECTION_NAME}")
 
         # 9. 清理步骤: 将不再需要的 .ic_markers 节内容清零
         # 使用同一个、仍然打开的文件句柄 'f' 来完成操作

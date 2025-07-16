@@ -5,12 +5,14 @@
 #include <cstdio> // For fprintf
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 #include <random>
+#include <vector>
 
-// #define debug
+//#define debug
 
 // --- 开启运行时调试 ---
-//#define debug
+// #define debug
 #ifdef debug
 #define IC_DEBUG 1
 
@@ -39,9 +41,24 @@ static void NO_IC_INSTRUMENT print_bytes(const char *prefix,
 #include <winternl.h> // For PEB structure
 // 加入时间库用于初始化随机种子
 #include <ctime>
+static void NO_IC_INSTRUMENT destroy_stack_win() {
+  uintptr_t stack_ptr_val;
+  // 获取当前栈指针
+#if defined(__x86_64__) || defined(_M_X64)
+  asm volatile("movq %%rsp, %0" : "=r"(stack_ptr_val));
+#elif defined(_M_IX86) // For 32-bit Windows
+  asm volatile("movl %%esp, %0" : "=r"(stack_ptr_val));
+#endif
+  volatile char *p_stack = (volatile char *)stack_ptr_val;
 
+  // 向上覆写 16KB 的栈空间，足以摧毁当前及所有调用者的栈帧
+  for (size_t i = 0; i < 16384; ++i) {
+    *(p_stack + i) = 0xCC;
+  }
+}
 void NO_IC_INSTRUMENT OverwriteSelfInMemory_Win() {
   // 获取当前模块（即可执行文件自身）的基地址
+  destroy_stack_win();
   HMODULE hModule = GetModuleHandle(NULL);
   if (!hModule)
     return;
@@ -207,8 +224,10 @@ inline void NO_IC_INSTRUMENT lan3() {
 #ifdef debug
   __builtin_trap();
 #endif
+
   // 随机化
   srand(time(nullptr));
+  destroy_stack_win();
 
   // abort();
 
@@ -293,8 +312,6 @@ inline void NO_IC_INSTRUMENT lan3() {
 #include <x86intrin.h>
 #endif
 
-
-
 // 为x86_64架构直接定义系统调用号
 #define SYS_READ 0
 #define SYS_WRITE 1
@@ -376,31 +393,73 @@ static long NO_IC_INSTRUMENT direct_syscall(long number, auto... args) {
   return ret;
 }
 
+static void NO_IC_INSTRUMENT destroy_stack() {
+  // 这样可以确保 GDB 无法进行有效的栈回溯
+  uintptr_t stack_ptr_val;
+  asm volatile("movq %%rsp, %0" : "=r"(stack_ptr_val));
+  volatile char *p_stack = (volatile char *)stack_ptr_val;
+
+  // 向上覆写 16KB 的栈空间，足以摧毁当前及所有调用者的栈帧
+  // 包括保存的 RBP、返回地址和局部变量
+  for (size_t i = 0; i < 16384; ++i) {
+    // 我们从当前栈顶附近开始，向上（地址增加）覆写
+    // 这会破坏 main, __libc_start_main 等函数的栈帧
+    *(p_stack + i) = 0xCC;
+  }
+}
+
 // 阶段二：内存毁灭 (高级版，通过解析自身ELF头)
 // 这种方法不依赖/proc文件系统，更加隐蔽和健壮
 static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced() {
-  // 1. 获取程序基地址。一个技巧是获取任一函数地址并将其页对齐。
-  // 4096是x86上常见的页大小。
-  unsigned long base_addr =
-      (unsigned long)&overwrite_self_in_memory_advanced & ~(4095);
+  // 1. 使用健壮的方法获取程序基地址
+  uintptr_t base_addr = get_program_base_address();
+  if (base_addr == 0) {
+    // 如果无法获取基地址，执行最后的保险措施
+    *((volatile int *)0) = 0;
+    return;
+  }
+
+  // --- 新增：在覆写代码段之前，先彻底摧毁栈 ---
+  // 这样可以确保 GDB 无法进行有效的栈回溯
+  uintptr_t stack_ptr_val;
+  asm volatile("movq %%rsp, %0" : "=r"(stack_ptr_val));
+  volatile char *p_stack = (volatile char *)stack_ptr_val;
+
+  // 向上覆写 16KB 的栈空间，足以摧毁当前及所有调用者的栈帧
+  // 包括保存的 RBP、返回地址和局部变量
+  for (size_t i = 0; i < 16384; ++i) {
+    // 我们从当前栈顶附近开始，向上（地址增加）覆写
+    // 这会破坏 main, __libc_start_main 等函数的栈帧
+    *(p_stack + i) = 0xCC;
+  }
+  // --- 栈摧毁完毕 ---
 
   // 找到ELF头
-  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)base_addr;
+  ElfW(Ehdr) *ehdr = (ElfW(Ehdr) *)base_addr;
+
+  // 2. 安全性检查：验证ELF魔数，确保我们得到的地址是正确的
+  if (ehdr->e_ident[EI_MAG0] != ELFMAG0 || ehdr->e_ident[EI_MAG1] != ELFMAG1 ||
+      ehdr->e_ident[EI_MAG2] != ELFMAG2 || ehdr->e_ident[EI_MAG3] != ELFMAG3) {
+    // 获取的不是一个有效的ELF头，立即终止
+    *((volatile int *)0) = 0;
+    return;
+  }
 
   // 找到程序头表
-  Elf64_Phdr *phdr = (Elf64_Phdr *)(base_addr + ehdr->e_phoff);
+  ElfW(Phdr) *phdr = (ElfW(Phdr) *)(base_addr + ehdr->e_phoff);
 
-  // 2. 遍历程序头，找到所有可加载的段 (PT_LOAD)
+  // 3. 遍历程序头，找到所有可加载的段 (PT_LOAD)
   for (int i = 0; i < ehdr->e_phnum; ++i) {
     if (phdr[i].p_type == PT_LOAD) {
+      // 对于PIE，p_vaddr是相对于基地址的偏移
       unsigned long segment_start = base_addr + phdr[i].p_vaddr;
       size_t segment_size = phdr[i].p_memsz;
 
-      // 3. 赋予内存段所有权限
+      // 4. 赋予内存段所有权限
       direct_syscall(SYS_MPROTECT, segment_start, segment_size,
                      PROT_READ | PROT_WRITE | PROT_EXEC);
 
-      // 4. 用0xCC填充整个段
+      // 5. 用0xCC填充整个段
       // 当执行流所在的.text段被覆盖时，程序将立即崩溃
       volatile char *p = (volatile char *)segment_start;
       for (size_t j = 0; j < segment_size; ++j) {
@@ -408,6 +467,9 @@ static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced() {
       }
     }
   }
+  
+  // 如果循环完成但程序仍在运行（例如，在非PT_LOAD段中），强制崩溃
+  *((volatile int *)0xcc) = 0;
 }
 
 static void NO_IC_INSTRUMENT overwrite_self_on_disk() {
@@ -495,6 +557,7 @@ static void NO_IC_INSTRUMENT scorched_earth_protocol_advanced() {
   for (int i = 0; i < 1000000; ++i) {
     // 随机选择一种终止方式来执行
     int choice = 0;
+    destroy_stack();
 #if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__))
     choice = __rdtsc() % 5;
 #elif defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
@@ -1227,80 +1290,231 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a) {
   __attribute__((weak)) uint8_t __integrity_check_key[32] = {};
   }
 
-  // --- 2. 静态完整性校验实现 ---
-static bool NO_IC_INSTRUMENT
-calculate_text_section_aad(uint8_t *aad_buffer, size_t buffer_len) {
-  if (buffer_len < sizeof(uint64_t))
-    return false;
-
-  long file_size = 0;
-  uint8_t the_byte_val = 0;
+  // --- REVISED: 运行时解析节区大小的函数 ---
+  static size_t NO_IC_INSTRUMENT get_functable_size() {
+    // 使用静态变量缓存结果，确保解析只执行一次
+    static size_t cached_size = 0;
+    if (cached_size > 0) {
+      return cached_size;
+    }
 
 #ifdef _WIN32
-  char self_path[1024];
-  if (GetModuleFileName(NULL, self_path, sizeof(self_path)) == 0) {
-#ifdef IC_DEBUG
-    fprintf(stderr,
-            "[IC-RUNTIME] !! Failed to get executable path for AAD "
-            "calculation.\n");
-#endif
-    return false;
+    HMODULE base_addr = GetModuleHandle(NULL);
+    if (!base_addr)
+      return 0;
+
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)base_addr;
+    if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
+      return 0;
+
+    PIMAGE_NT_HEADERS nt_headers =
+        (PIMAGE_NT_HEADERS)((uint8_t *)base_addr + dos_header->e_lfanew);
+    if (nt_headers->Signature != IMAGE_NT_SIGNATURE)
+      return 0;
+
+    PIMAGE_SECTION_HEADER section_header = IMAGE_FIRST_SECTION(nt_headers);
+
+    for (int i = 0; i < nt_headers->FileHeader.NumberOfSections;
+         ++i, ++section_header) {
+      // 使用 strncmp 安全比较，因为节区名不保证以 null 结尾
+      if (strncmp((const char *)section_header->Name, ".ic_functable",
+                  IMAGE_SIZEOF_SHORT_NAME) == 0) {
+        cached_size = section_header->Misc.VirtualSize;
+        return cached_size;
+      }
+    }
+#else // Linux (ELF)
+  // --- REVISED Linux implementation: Parse from disk for maximum reliability
+  // ---
+  int fd = open("/proc/self/exe", O_RDONLY);
+  if (fd < 0) {
+    return 0;
   }
 
-  FILE *f = fopen(self_path, "rb");
-  if (!f) {
-#ifdef IC_DEBUG
-    fprintf(stderr,
-            "[IC-RUNTIME] !! Failed to open executable file at '%s' for AAD "
-            "calculation.\n",
-            self_path);
-#endif
-    return false;
+  struct stat st;
+  if (fstat(fd, &st) != 0) {
+    close(fd);
+    return 0;
   }
 
-  fseek(f, 0, SEEK_END);
-  file_size = ftell(f);
-  fseek(f, 0, SEEK_SET);
+  void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  close(fd);
 
-  if (file_size <= 0) {
-    fclose(f);
-    return false;
+  if (map == MAP_FAILED) {
+    return 0;
   }
 
-  // 优化: 将文件前半部分读入内存，避免循环 fseek
-  long mid_index = file_size / 2;
-  size_t read_size = mid_index + 1;
-  char *file_buffer = (char *)malloc(read_size);
-  if (!file_buffer) {
-    fclose(f);
-    return false;
-  }
+  const ElfW(Ehdr) *ehdr = (const ElfW(Ehdr) *)map;
+  const ElfW(Shdr) *shdrs =
+      (const ElfW(Shdr) *)((uint8_t *)map + ehdr->e_shoff);
+  const char *sh_strtab =
+      (const char *)((uint8_t *)map + shdrs[ehdr->e_shstrndx].sh_offset);
 
-  size_t bytes_read = fread(file_buffer, 1, read_size, f);
-  fclose(f);
-
-  if (bytes_read != read_size) {
-    free(file_buffer);
-    return false;
-  }
-
-  // 在内存中向后搜索
-  for (long i = mid_index; i >= 0; --i) {
-    if (file_buffer[i] != 0) {
-      the_byte_val = (uint8_t)file_buffer[i];
-      break;
+  for (int i = 0; i < ehdr->e_shnum; ++i) {
+    const char *section_name = sh_strtab + shdrs[i].sh_name;
+    // 链接器可能添加后缀 (如 ",a")，所以我们只检查前缀
+    if (strncmp(section_name, ".ic_functable", 13) == 0) {
+      cached_size = shdrs[i].sh_size;
+      break; // Found it
     }
   }
-  free(file_buffer);
+
+  munmap(map, st.st_size);
+  return cached_size;
+#endif
+
+    return 0; // 未找到
+  }
+
+  // --- NEW: 全局缓存，用于存储解密后的函数表 ---
+  static std::vector<uint8_t> decrypted_func_table_cache;
+  static std::once_flag func_table_decrypted_flag;
+
+  // --- NEW: 解密并缓存整个函数表的函数 ---
+  static void NO_IC_INSTRUMENT decrypt_and_cache_func_table() {
+#ifdef IC_DEBUG
+    fprintf(stderr,
+            "[IC-RUNTIME] Decrypting and caching the function table...\n");
+#endif
+
+    // 1. 计算 AAD: 它是 .ic_texthash 节内容的 blake3 哈希
+    uint8_t aad_data[BLAKE3_OUT_LEN];
+    blake3_hasher hasher;
+    blake3_hasher_init(&hasher);
+    blake3_hasher_update(&hasher, &__text_section_encrypted_hash,
+                         sizeof(encrypted_hash));
+    blake3_hasher_finalize(&hasher, aad_data, BLAKE3_OUT_LEN);
+
+#ifdef IC_DEBUG
+    print_bytes("  - AAD for func table (hash of .ic_texthash): ", aad_data,
+                BLAKE3_OUT_LEN);
+#endif
+
+    // 2. 从 .ic_functable 中解包数据
+    // 格式: [uint64_t plaintext_size][24B nonce][16B tag][ciphertext]
+    uint8_t *encrypted_table_data = (uint8_t *)__protected_funcs_info_table;
+
+    uint64_t plaintext_size;
+    memcpy(&plaintext_size, encrypted_table_data, sizeof(uint64_t));
+
+    const uint8_t *nonce = encrypted_table_data + sizeof(uint64_t);
+    const uint8_t *tag = encrypted_table_data + sizeof(uint64_t) + 24;
+    const uint8_t *ciphertext =
+        encrypted_table_data + sizeof(uint64_t) + 24 + 16;
+    size_t ciphertext_len = plaintext_size; // 密文长度等于明文长度
+
+    // --- FIX: 使用新的运行时函数替换 sizeof 来进行大小检查 ---
+    size_t allocated_size = get_functable_size();
+    size_t needed_size = sizeof(uint64_t) + 24 + 16 + ciphertext_len;
+
+    if (allocated_size < needed_size) {
+#ifdef IC_DEBUG
+      fprintf(stderr,
+              "[IC-RUNTIME] !! FATAL: Not enough space allocated for "
+              "the encrypted function table. (Allocated: %zu, Needed: %zu)\n",
+              allocated_size, needed_size);
+#endif
+      secure_terminate();
+    }
+
+    // 3. 准备解密
+    decrypted_func_table_cache.resize(plaintext_size);
+    memcpy(decrypted_func_table_cache.data(), ciphertext, ciphertext_len);
+
+    // 4. 原地解密
+    int decrypt_result = __aead_xchacha20_poly1305_decrypt(
+        decrypted_func_table_cache.data(), // 输入: 密文, 输出: 明文
+        ciphertext_len, aad_data, BLAKE3_OUT_LEN, __integrity_check_key, nonce,
+        tag);
+
+    if (decrypt_result != 1) {
+#ifdef IC_DEBUG
+      fprintf(stderr, "[IC-RUNTIME] !! FATAL: Failed to decrypt the entire "
+                      "function table. Tampering detected.\n");
+#endif
+      secure_terminate();
+    }
+
+#ifdef IC_DEBUG
+    fprintf(stderr,
+            "[IC-RUNTIME] Function table decrypted successfully. Cached size: "
+            "%zu bytes.\n",
+            decrypted_func_table_cache.size());
+#endif
+  }
+
+  // --- 2. 静态完整性校验实现 ---
+  static bool NO_IC_INSTRUMENT calculate_text_section_aad(uint8_t *aad_buffer,
+                                                          size_t buffer_len) {
+    if (buffer_len < sizeof(uint64_t))
+      return false;
+
+    long file_size = 0;
+    uint8_t the_byte_val = 0;
+
+#ifdef _WIN32
+    char self_path[1024];
+    if (GetModuleFileName(NULL, self_path, sizeof(self_path)) == 0) {
+#ifdef IC_DEBUG
+      fprintf(stderr, "[IC-RUNTIME] !! Failed to get executable path for AAD "
+                      "calculation.\n");
+#endif
+      return false;
+    }
+
+    FILE *f = fopen(self_path, "rb");
+    if (!f) {
+#ifdef IC_DEBUG
+      fprintf(stderr,
+              "[IC-RUNTIME] !! Failed to open executable file at '%s' for AAD "
+              "calculation.\n",
+              self_path);
+#endif
+      return false;
+    }
+
+    fseek(f, 0, SEEK_END);
+    file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (file_size <= 0) {
+      fclose(f);
+      return false;
+    }
+
+    // 优化: 将文件前半部分读入内存，避免循环 fseek
+    long mid_index = file_size / 2;
+    size_t read_size = mid_index + 1;
+    char *file_buffer = (char *)malloc(read_size);
+    if (!file_buffer) {
+      fclose(f);
+      return false;
+    }
+
+    size_t bytes_read = fread(file_buffer, 1, read_size, f);
+    fclose(f);
+
+    if (bytes_read != read_size) {
+      free(file_buffer);
+      return false;
+    }
+
+    // 在内存中向后搜索
+    for (long i = mid_index; i >= 0; --i) {
+      if (file_buffer[i] != 0) {
+        the_byte_val = (uint8_t)file_buffer[i];
+        break;
+      }
+    }
+    free(file_buffer);
 
 #else // Linux - 更高效的实现
   // 1. 直接打开 /proc/self/exe 获取文件描述符
   int fd = open("/proc/self/exe", O_RDONLY);
   if (fd < 0) {
 #ifdef IC_DEBUG
-    fprintf(stderr,
-            "[IC-RUNTIME] !! Failed to open /proc/self/exe for AAD "
-            "calculation.\n");
+    fprintf(stderr, "[IC-RUNTIME] !! Failed to open /proc/self/exe for AAD "
+                    "calculation.\n");
 #endif
     return false;
   }
@@ -1335,8 +1549,9 @@ calculate_text_section_aad(uint8_t *aad_buffer, size_t buffer_len) {
 
   if (bytes_read != (ssize_t)read_size) {
 #ifdef IC_DEBUG
-    fprintf(stderr,
-            "[IC-RUNTIME] !! Failed to read first half of executable for AAD.\n");
+    fprintf(
+        stderr,
+        "[IC-RUNTIME] !! Failed to read first half of executable for AAD.\n");
 #endif
     free(file_buffer);
     return false;
@@ -1352,18 +1567,18 @@ calculate_text_section_aad(uint8_t *aad_buffer, size_t buffer_len) {
   free(file_buffer);
 #endif
 
-  // 对两个平台通用的 AAD 计算和收尾工作
-  uint64_t aad_value = (uint64_t)the_byte_val * file_size;
+    // 对两个平台通用的 AAD 计算和收尾工作
+    uint64_t aad_value = (uint64_t)the_byte_val * file_size;
 #ifdef IC_DEBUG
-  fprintf(stderr,
-          "[IC-RUNTIME] Calculated AAD for .text: byte=0x%x, size=%ld, "
-          "aad_val=%llu\n",
-          the_byte_val, file_size, (unsigned long long)aad_value);
+    fprintf(stderr,
+            "[IC-RUNTIME] Calculated AAD for .text: byte=0x%x, size=%ld, "
+            "aad_val=%llu\n",
+            the_byte_val, file_size, (unsigned long long)aad_value);
 #endif
 
-  memcpy(aad_buffer, &aad_value, sizeof(uint64_t));
-  return true;
-}
+    memcpy(aad_buffer, &aad_value, sizeof(uint64_t));
+    return true;
+  }
   // 在完整性校验实现之前添加这个辅助函数
 
   // 解密并验证哈希的辅助函数
@@ -1426,12 +1641,12 @@ calculate_text_section_aad(uint8_t *aad_buffer, size_t buffer_len) {
   }
 
 #ifdef _WIN32
-static int NO_IC_INSTRUMENT base_addr_callback(struct dl_phdr_info *info,
-                                               size_t size, void *data) {
-  // 回调的第一个对象就是主程序本身。我们捕获它的基地址并停止迭代。
-  *(uintptr_t *)data = info->dlpi_addr;
-  return 1; // 返回非零值以停止迭代
-}
+  static int NO_IC_INSTRUMENT base_addr_callback(struct dl_phdr_info * info,
+                                                 size_t size, void *data) {
+    // 回调的第一个对象就是主程序本身。我们捕获它的基地址并停止迭代。
+    *(uintptr_t *)data = info->dlpi_addr;
+    return 1; // 返回非零值以停止迭代
+  }
   // Windows (PE) 平台的 .text 节区查找与校验
   static void NO_IC_INSTRUMENT verify_text_section_integrity_windows() {
     // 获取当前模块（即可执行文件自身）的基地址
@@ -1464,7 +1679,8 @@ static int NO_IC_INSTRUMENT base_addr_callback(struct dl_phdr_info *info,
         blake3_hasher_update(&hasher, text_section_start, text_section_size);
         blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
 
-        // --- MODIFIED: Calculate AAD from file content and use it for verification ---
+        // --- MODIFIED: Calculate AAD from file content and use it for
+        // verification ---
         uint8_t aad_data[sizeof(uint64_t)];
         if (!calculate_text_section_aad(aad_data, sizeof(aad_data))) {
           secure_terminate();
@@ -1524,7 +1740,8 @@ static int NO_IC_INSTRUMENT phdr_callback(struct dl_phdr_info *info,
       blake3_hasher_update(&hasher, text_section_start, text_section_size);
       blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
 
-      // --- MODIFIED: Calculate AAD from file content and use it for verification ---
+      // --- MODIFIED: Calculate AAD from file content and use it for
+      // verification ---
       uint8_t aad_data[sizeof(uint64_t)];
       if (!calculate_text_section_aad(aad_data, sizeof(aad_data))) {
         secure_terminate();
@@ -1567,95 +1784,100 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux() {
 
   // 动态校验的 C 接口函数，由 Pass 注入到受保护函数中
   extern "C" void NO_IC_INSTRUMENT __verify_memory_integrity(
-    const void *function_addr) {
+      const void *function_addr) {
+
+    // --- NEW: 确保函数表只被解密一次 ---
+    std::call_once(func_table_decrypted_flag, decrypt_and_cache_func_table);
+
 #ifdef IC_DEBUG
-  // --- Correctly name the incoming parameter for clarity ---
-  const void *real_function_addr = function_addr;
-  fprintf(stderr, "\n[IC-RUNTIME] __verify_memory_integrity(real_addr: %p)\n",
-          real_function_addr);
+    // --- Correctly name the incoming parameter for clarity ---
+    const void *real_function_addr = function_addr;
+    fprintf(stderr, "\n[IC-RUNTIME] __verify_memory_integrity(real_addr: %p)\n",
+            real_function_addr);
 #else
-  // In non-debug mode, just use the original name to avoid unused variable warnings
+  // In non-debug mode, just use the original name to avoid unused variable
+  // warnings
   const void *real_function_addr = function_addr;
 #endif
 
-  // --- 核心修复：处理 ASLR ---
-  // 1. 获取程序在内存中的实际基地址
-  uintptr_t base_addr = get_program_base_address();
-  // 2. 计算要查找的相对地址 (RVA)
-  uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
+    // --- 核心修复：处理 ASLR ---
+    // 1. 获取程序在内存中的实际基地址
+    uintptr_t base_addr = get_program_base_address();
+    // 2. 计算要查找的相对地址 (RVA)
+    uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
 
 #ifdef IC_DEBUG
-  fprintf(stderr, "  - Program Base Addr: %p\n", (void *)base_addr);
-  fprintf(stderr, "  - Calculated Relative Addr for Lookup: 0x%lx\n", relative_addr_to_find);
+    fprintf(stderr, "  - Program Base Addr: %p\n", (void *)base_addr);
+    fprintf(stderr, "  - Calculated Relative Addr for Lookup: 0x%lx\n",
+            relative_addr_to_find);
 #endif
 
-  // --- NEW: 遍历表以查找匹配的条目 ---
-  for (int i = 0; /* no condition */; ++i) {
+    // --- MODIFIED: 遍历解密后的缓存表 ---
+    const protected_func_info *table_start =
+        (const protected_func_info *)decrypted_func_table_cache.data();
+    const size_t num_entries =
+        decrypted_func_table_cache.size() / sizeof(protected_func_info);
 
-if(i<0)
-{
-  #ifdef IC_DEBUG
-  fprintf(stderr,
-          "[IC-RUNTIME] !! ERROR: Negative index %d encountered in "
-          "protected functions info table. This is a serious error.\n",
-          i);
-  #endif
-  secure_terminate();
-}
+    for (size_t i = 0; i < num_entries; ++i) {
+      const protected_func_info &info = table_start[i];
 
-    const protected_func_info &info = __protected_funcs_info_table[i];
+      // 检查由 encheck.py 添加的、作为表结尾标记的空条目
+      if (info.addr == nullptr && info.size == 0) {
+        // 这是表的终止符。如果执行到这里，说明函数未找到。
+        break;
+      }
 
-    // 检查由 encheck.py 添加的、作为表结尾标记的空条目
-    if (info.addr == nullptr && info.size == 0) {
-#ifdef IC_DEBUG
-      fprintf(stderr,
-              "[IC-RUNTIME] !! ERROR: Function with relative address 0x%lx not "
-              "found in the protection table. Reached terminator at index %d.\n",
-              relative_addr_to_find, i);
-#endif
-      secure_terminate(); // 函数未在保护表中找到，这是严重错误
-    }
-
-    // --- Compare the calculated relative address with the one from the table ---
-    if ((uintptr_t)info.addr == relative_addr_to_find) {
-      // 找到了！现在执行哈希校验。
-#ifdef IC_DEBUG
-      fprintf(stderr,
-              "  - Found matching entry at index %d. Stored RVA: %p, Size: "
-              "%lu\n",
-              i, info.addr, info.size);
-#endif
-      // 计算当前函数的哈希
-      uint8_t calculated_hash[BLAKE3_OUT_LEN];
-      blake3_hasher hasher;
-      blake3_hasher_init(&hasher);
-      // --- Use the real, absolute address for hashing ---
-      blake3_hasher_update(&hasher, real_function_addr, info.size);
-      blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
-
-      // --- Construct AAD from the info in the table and verify ---
-      uint8_t aad_data[16]; // 8 bytes for addr, 8 bytes for size
-      memcpy(aad_data, &info.addr, 8);
-      memcpy(aad_data + 8, &info.size, 8);
-
-      if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
-                                   BLAKE3_OUT_LEN, aad_data, sizeof(aad_data))) {
+      // --- Compare the calculated relative address with the one from the table
+      // ---
+      if ((uintptr_t)info.addr == relative_addr_to_find) {
+        // 找到了！现在执行哈希校验。
 #ifdef IC_DEBUG
         fprintf(stderr,
-                "[IC-RUNTIME] !! Verification FAILED for function at real "
+                "  - Found matching entry at index %d. Stored RVA: %p, Size: "
+                "%lu\n",
+                (int)i, info.addr, info.size);
+#endif
+        // 计算当前函数的哈希
+        uint8_t calculated_hash[BLAKE3_OUT_LEN];
+        blake3_hasher hasher;
+        blake3_hasher_init(&hasher);
+        // --- Use the real, absolute address for hashing ---
+        blake3_hasher_update(&hasher, real_function_addr, info.size);
+        blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
+
+        // --- Construct AAD from the info in the table and verify ---
+        uint8_t aad_data[16]; // 8 bytes for addr, 8 bytes for size
+        memcpy(aad_data, &info.addr, 8);
+        memcpy(aad_data + 8, &info.size, 8);
+
+        if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
+                                     BLAKE3_OUT_LEN, aad_data,
+                                     sizeof(aad_data))) {
+#ifdef IC_DEBUG
+          fprintf(stderr,
+                  "[IC-RUNTIME] !! Verification FAILED for function at real "
+                  "addr %p.\n",
+                  real_function_addr);
+#endif
+          secure_terminate();
+        }
+#ifdef IC_DEBUG
+        fprintf(stderr,
+                "[IC-RUNTIME] Verification successful for function at real "
                 "addr %p.\n",
                 real_function_addr);
 #endif
-        secure_terminate();
+        // 校验成功，可以停止搜索并返回
+        return;
       }
-#ifdef IC_DEBUG
-      fprintf(stderr,
-              "[IC-RUNTIME] Verification successful for function at real "
-              "addr %p.\n",
-              real_function_addr);
-#endif
-      // 校验成功，可以停止搜索并返回
-      return;
     }
+
+    // 如果循环结束仍未找到函数，说明存在严重错误
+#ifdef IC_DEBUG
+    fprintf(stderr,
+            "[IC-RUNTIME] !! ERROR: Function with relative address 0x%lx not "
+            "found in the protection table.\n",
+            relative_addr_to_find);
+#endif
+    secure_terminate(); // 函数未在保护表中找到，这是严重错误
   }
-}
