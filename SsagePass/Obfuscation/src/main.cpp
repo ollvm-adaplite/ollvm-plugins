@@ -62,40 +62,6 @@
 // 使用 llvm 命名空间，因为 FlatteningEnhanced.h 中类和函数都在此命名空间
 using namespace llvm;
 
-
-
-// 给第一层 dispatcher 生成 XOR 掩码
-static unsigned getSeedXor(int seed) {
-  // 简单示例：种子异或一个常量
-  return (unsigned)seed ^ 0x5A5A5A5A;
-}
-
-// 给第二层 segment dispatcher 生成每段的 XOR 掩码
-static unsigned getSegmentXor(unsigned segmentIndex, int seed) {
-  // 示例：用段号和种子混合
-  return ((segmentIndex + 1) * 0x1234567u) ^ (unsigned)seed;
-}
-
-// 给每个基本块分配一个 case 值
-static unsigned getCaseForBlock(const llvm::BasicBlock *BB) {
-  // 简单：用指针地址做哈希后取低位
-  auto x = reinterpret_cast<uintptr_t>(BB);
-  // mix bits
-  x ^= (x >> 13);
-  x *= 0x9E3779B97F4A7C15ULL;
-  x ^= (x >> 17);
-  return (unsigned)x;
-}
-static unsigned getJunkCase(int seed, unsigned idx) {
-  uint64_t x = (uint64_t)seed;
-  x = x * 0x9E3779B97F4A7C15ULL + idx;
-  x ^= (x >> 16);
-  x *= 0x85EBCA6BULL;
-  return (unsigned)(x & 0xFFFFFFFFu);
-}
-
-
-
 // --- HelloPass (for testing or other purposes, kept as is) ---
 struct HelloPass : public PassInfoMixin<HelloPass> {
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM) {
@@ -201,11 +167,10 @@ llvmGetPassPluginInfo() {
                   /*  MPM.addPass(llvm::StringEncryptionPass(
                            true)); */
 
-                  MPM.addPass(llvm::IntegrityCheckPass(
-                    true));
-                 
-                 /*  MPM.addPass(createModuleToFunctionPassAdaptor(
-                      llvm::FlatteningPass(true))); */
+                  MPM.addPass(llvm::IntegrityCheckPass(true));
+
+                  /*  MPM.addPass(createModuleToFunctionPassAdaptor(
+                       llvm::FlatteningPass(true))); */
                   /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::TSXProtectPass(true)));
                    */
                 });
