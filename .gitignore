@@ -10,6 +10,8 @@ build/*
 *.so.*
 *.dylib
 *.dll
+*.ll
+
 
 # test file
 charge_test.out.*

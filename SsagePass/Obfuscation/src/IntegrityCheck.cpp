@@ -273,7 +273,7 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
   auto *markerTableGV =
       new GlobalVariable(M, MarkerTableTy, true, GlobalValue::ExternalLinkage,
                          MarkerTableInitializer, "__ic_function_marker_table");
-  markerTableGV->setSection(".ic_markers,a"); // 移除 'w' 标志，设为只读
+  markerTableGV->setSection(".ic_markers"); // 移除 'w' 标志，设为只读
 
   // --- END OF NEW IMPLEMENTATION ---
 
