@@ -6,14 +6,18 @@
 build/*
 *.out
 *.out*
-
-# test file
-charge_test.out.*
-
 *.so
 *.so.*
 *.dylib
 *.dll
 
+# test file
+charge_test.out.*
+
+#gdb
+*.gdb
+*.gdbinit
+
+# cmake
 *.log*
 build_crypto_runtime/
