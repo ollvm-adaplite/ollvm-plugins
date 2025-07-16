@@ -10,6 +10,8 @@ build/*
 *.so.*
 *.dylib
 *.dll
+*.ll
+
 
 # test file
 charge_test.out.*
@@ -21,3 +23,9 @@ charge_test.out.*
 # cmake
 *.log*
 build_crypto_runtime/
+
+# pull script
+merge-to-main.sh
+pushMyBranch.sh
+sync-with-main.sh
+

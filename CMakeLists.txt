@@ -35,6 +35,7 @@ file(GLOB OBFUSCATION_SOURCES
 )
 
 set(PLUGIN_SOURCES
+    SsagePass/Obfuscation/src/main.cpp
     ${OBFUSCATION_SOURCES}
 )
 
