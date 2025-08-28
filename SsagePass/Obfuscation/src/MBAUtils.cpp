@@ -11,54 +11,62 @@ using namespace Eigen;
 using namespace llvm;
 
 int8_t truthTable[15][4] = {
-    {0, 0, 0, 1}, // x & y
-    {0, 0, 1, 0}, // x & ~y
-    {0, 0, 1, 1}, // x
-    {0, 1, 0, 0}, // ~x & y
-    {0, 1, 0, 1}, // y
-    {0, 1, 1, 0}, // x ^ y
-    {0, 1, 1, 1}, // x | y
-    {1, 0, 0, 0}, // ~(x | y)
-    {1, 0, 0, 1}, // ~(x ^ y)
-    {1, 0, 1, 0}, // ~y
-    {1, 0, 1, 1}, // x | ~y
-    {1, 1, 0, 0}, // ~x
-    {1, 1, 0, 1}, // ~x | y
-    {1, 1, 1, 0}, // ~(x & y)
-    {1, 1, 1, 1}, // -1
+        {0, 0, 0, 1},  // x & y
+        {0, 0, 1, 0},  // x & ~y
+        {0, 0, 1, 1},  // x
+        {0, 1, 0, 0},  // ~x & y
+        {0, 1, 0, 1},  // y
+        {0, 1, 1, 0},  // x ^ y
+        {0, 1, 1, 1},  // x | y
+        {1, 0, 0, 0},  // ~(x | y)
+        {1, 0, 0, 1},  // ~(x ^ y)
+        {1, 0, 1, 0},  // ~y
+        {1, 0, 1, 1},  // x | ~y
+        {1, 1, 0, 0},  // ~x
+        {1, 1, 0, 1},  // ~x | y
+        {1, 1, 1, 0},  // ~(x & y)
+        {1, 1, 1, 1},  // -1
 };
 
-int64_t *llvm::generateLinearMBA(int exprNumber) {
+int64_t *llvm::generateLinearMBA(int exprNumber)
+{
     int *exprSelector = new int[exprNumber];
     int64_t *coeffs = new int64_t[15];
-    while (true) {
+    while (true)
+    {
         std::fill_n(coeffs, 15, 0);
-        for (int i = 0; i < exprNumber; i++) {
+        for (int i = 0; i < exprNumber; i++)
+        {
             exprSelector[i] = rand() % 15;
         }
         MatrixXd A(4, exprNumber);
         VectorXd b(4);
         VectorXd X;
         b << 0, 0, 0, 0;
-        for (int i = 0; i < exprNumber; i++) {
-            for (int j = 0; j < 4; j++) {
+        for (int i = 0; i < exprNumber; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
                 A(j, i) = truthTable[exprSelector[i]][j];
             }
         }
         X = A.fullPivLu().kernel().col(0);
         // reject if coeffs contain non-integer or are all zero
         bool reject = false;
-        for (int i = 0; i < exprNumber; i++) {
+        for (int i = 0; i < exprNumber; i++)
+        {
             coeffs[exprSelector[i]] += X[i];
-            if (std::abs(X[i] - (int64_t)X[i]) > 1e-5) {
+            if (std::abs(X[i] - (int64_t)X[i]) > 1e-5)
+            {
                 reject = true;
                 break;
             }
         }
         if (reject)
-        continue;
+            continue;
         reject = true;
-        for (int i = 0; i < 15; i++) {
+        for (int i = 0; i < 15; i++)
+        {
             if (coeffs[i] != 0)
                 reject = false;
         }
@@ -69,31 +77,35 @@ int64_t *llvm::generateLinearMBA(int exprNumber) {
     }
 }
 
-Value *llvm::insertLinearMBA(int64_t *params, Instruction *insertBefore) {
+Value *llvm::insertLinearMBA(int64_t *params, Instruction *insertBefore)
+{
     IRBuilder<> builder(insertBefore->getContext());
     builder.SetInsertPoint(insertBefore);
     Value *x, *y;
-    if (isa<BinaryOperator>(insertBefore) &&
-        insertBefore->getNumOperands() == 2) {
+    if (isa<BinaryOperator>(insertBefore) && insertBefore->getNumOperands() == 2)
+    {
         x = insertBefore->getOperand(0);
         y = insertBefore->getOperand(1);
-    } else {
+    }
+    else
+    {
         Module &M = *insertBefore->getModule();
         Type *type = insertBefore->getOperand(0)->getType();
         uint64_t randX = cryptoutils->get_uint64_t(),
-                randY = cryptoutils->get_uint64_t();
+                 randY = cryptoutils->get_uint64_t();
         GlobalVariable *xPtr = new GlobalVariable(
-            M, type, false, GlobalValue::PrivateLinkage, CONST(type, randX), "x");
+                M, type, false, GlobalValue::PrivateLinkage, CONST(type, randX), "x");
         GlobalVariable *yPtr = new GlobalVariable(
-            M, type, false, GlobalValue::PrivateLinkage, CONST(type, randY), "y");
+                M, type, false, GlobalValue::PrivateLinkage, CONST(type, randY), "y");
         x = builder.CreateLoad(xPtr->getValueType(), xPtr, "x_val");
         y = builder.CreateLoad(yPtr->getValueType(), yPtr, "y_val");
     }
     // Ensure x and y are of a type that MBA can operate on, typically integer.
     // If x or y are pointers or other types, this MBA logic might be problematic.
     // The type for Alloca should match the type of x (and y).
-    Type* mbaVarType = x->getType();
-    if (!mbaVarType->isIntegerTy()) {
+    Type *mbaVarType = x->getType();
+    if (!mbaVarType->isIntegerTy())
+    {
         // Adjust or error if x is not an integer type.
         // This example assumes x is already an appropriate integer type.
     }
@@ -104,7 +116,8 @@ Value *llvm::insertLinearMBA(int64_t *params, Instruction *insertBefore) {
     Value *mbaExpr = builder.CreateLoad(cast<AllocaInst>(mbaExprAlloca)->getAllocatedType(), mbaExprAlloca, "mbaExpr");
 
     Value *boolExpr, *term;
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < 15; i++)
+    {
         if (!params[i])
             continue;
         // x & y
@@ -153,15 +166,17 @@ Value *llvm::insertLinearMBA(int64_t *params, Instruction *insertBefore) {
         else if (i == 14)
             boolExpr = ConstantInt::get(x->getType(), -1);
         term =
-            builder.CreateMul(ConstantInt::get(x->getType(), params[i]), boolExpr);
+                builder.CreateMul(ConstantInt::get(x->getType(), params[i]), boolExpr);
         mbaExpr = builder.CreateAdd(mbaExpr, term);
     }
     return mbaExpr;
 }
 
 // Extended Euclid's Theorem function.
-uint64_t exgcd(uint64_t a, uint64_t b, uint64_t &x, uint64_t &y) {
-    if (b == 0) {
+uint64_t exgcd(uint64_t a, uint64_t b, uint64_t &x, uint64_t &y)
+{
+    if (b == 0)
+    {
         x = 1, y = 0;
         return a;
     }
@@ -170,19 +185,22 @@ uint64_t exgcd(uint64_t a, uint64_t b, uint64_t &x, uint64_t &y) {
     return g;
 }
 
-uint64_t inv(uint64_t a, uint64_t p) {
+uint64_t inv(uint64_t a, uint64_t p)
+{
     uint64_t x, y;
     exgcd(a, p, x, y);
     // get the inverse element
     return (x % p + p) % p;
 }
 
-uint64_t inverse(uint64_t n, uint32_t bitWidth) {
+uint64_t inverse(uint64_t n, uint32_t bitWidth)
+{
     assert(bitWidth <= 32);
     return inv(n, 1LL << bitWidth);
 }
 
-void generateUnivariatePoly(uint64_t *a, uint64_t *b, uint32_t bitWidth) {
+void generateUnivariatePoly(uint64_t *a, uint64_t *b, uint32_t bitWidth)
+{
     uint64_t a0, a1, b0, b1, a1_inv;
     a0 = cryptoutils->get_uint64_t(), a1 = cryptoutils->get_uint64_t() | 1;
 
@@ -199,7 +217,8 @@ void generateUnivariatePoly(uint64_t *a, uint64_t *b, uint32_t bitWidth) {
 }
 
 Value *llvm::insertPolynomialMBA(Value *linearMBAExpr,
-                                 Instruction *insertBefore) {
+                                 Instruction *insertBefore)
+{
     IRBuilder<> builder(insertBefore->getContext());
     builder.SetInsertPoint(insertBefore);
     Type *operandType = insertBefore->getOperand(0)->getType();

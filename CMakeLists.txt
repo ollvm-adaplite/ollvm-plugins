@@ -6,7 +6,7 @@ add_subdirectory(SsagePass/Obfuscation/blake3/c)
 
 #set(LLVM_DIR "/home/ljs/oritestinstall")
 #set(LLVM_DIR "/home/ljs/oritestinstall/bin")
-set(LLVM_DIR "/home/ljs/llvmall")
+set(LLVM_DIR ${LLVM_PATH})
 # 找到 LLVM
 find_package(LLVM REQUIRED CONFIG)
 find_package(LLD REQUIRED CONFIG)  # 手动查找 LLD

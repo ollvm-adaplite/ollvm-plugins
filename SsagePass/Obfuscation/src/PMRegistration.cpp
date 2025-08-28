@@ -16,8 +16,8 @@
 
 // /**
 //  * @brief Get the Ssage Plugin Info object
-//  * 
-//  * @return llvm::PassPluginLibraryInfo 
+//  *
+//  * @return llvm::PassPluginLibraryInfo
 //  */
 // llvm::PassPluginLibraryInfo getSsagePluginInfo() {
 //   return {
@@ -27,7 +27,7 @@
 //             // for opt
 //             /**
 //              * @brief 暂时适配Android NDK下的llvm环境 由于没有opt 且opt不适合集成编译 暂时不适配这方面参数
-//              * 
+//              *
 //              */
 //             // PB.registerPipelineParsingCallback(
 //             //   [&](StringRef Name, FunctionPassManager &FPM,
@@ -97,7 +97,7 @@
 
 // /**
 //  * @brief NEW PM
-//  * 
+//  *
 //  */
 // extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 // llvmGetPassPluginInfo() {
