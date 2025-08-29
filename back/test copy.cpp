@@ -1,4 +1,4 @@
-// ...existing code...
+
 #include <sstream>  // Required for std::ostringstream
 
 #include <iostream>
@@ -354,4 +354,3 @@ int main()
 
     return (passed_tests == total_tests) ? 0 : 1;
 }
-// ...existing code...

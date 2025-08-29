@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-PASS_PLUGIN="./build/LLVMHello.so"
+PASS_PLUGIN="./build/OllvmPlugins.so"
 # 1. 编译 check 共享库
 clang++ -O0 -fpass-plugin=${PASS_PLUGIN} -fPIC -shared -o libcheck.so checklib.cpp
 

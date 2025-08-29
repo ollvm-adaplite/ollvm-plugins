@@ -1,9 +1,5 @@
-cmake_minimum_required(VERSION 3.11.0)
+cmake_minimum_required(VERSION 3.10.0)
 project(llvmpass VERSION 0.1.0 LANGUAGES C CXX)
-
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
-# 导出clangd所需的查找路径
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # 添加子目录
 add_subdirectory(SsagePass/Obfuscation/blake3/c)
@@ -13,20 +9,24 @@ add_subdirectory(SsagePass/Obfuscation/blake3/c)
 set(LLVM_DIR ${LLVM_PATH})
 # 找到 LLVM
 find_package(LLVM REQUIRED CONFIG)
+#find_package(LLD REQUIRED CONFIG) # 手动查找 LLD
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-# 添加：包含 LLVM 的 CMake helper，以便使用 llvm_map_components_to_libnames
-include(AddLLVM)
 
-# 兼容老版变量（可选，但常用）
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
+#message(STATUS "LLD version: ${LLD_VERSION}")
+
+
+# 导出编译 .json 文件
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+#include_directories(${LLVM_INCLUDE_DIRS})
+#add_definitions(${LLVM_DEFINITIONS})
 
 # 设置使用 libstdc++
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fno-rtti ")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -fno-rtti")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}  -fno-rtti")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fno-rtti")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libstdc++ -fno-rtti")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -stdlib=libstdc++ -fno-rtti")
 
 
 # 自动收集所有 .cpp 文件
@@ -53,11 +53,8 @@ set_target_properties(OllvmPlugins PROPERTIES
     LINKER_LANGUAGE CXX
 )
 
-
-
-target_link_libraries(OllvmPlugins PRIVATE
-    BLAKE3::blake3
-)
+# 不链接任何LLVM库，让opt提供这些符号
+target_link_libraries(OllvmPlugins PRIVATE BLAKE3::blake3)
 
 # 确保使用正确的编译标志
 target_compile_definitions(OllvmPlugins PRIVATE ${LLVM_DEFINITIONS} LLVM_ENABLE_DUMP)
@@ -70,12 +67,11 @@ target_include_directories(OllvmPlugins PRIVATE
     ${LLVM_INCLUDE_DIRS} # LLVM 的标准头文件目录放在后面
 )
 
-# 明确指定使用 libstdc++ 进行编译
-target_compile_options(OllvmPlugins PRIVATE)
 
+target_compile_options(OllvmPlugins PRIVATE -stdlib=libstdc++)
 # 禁用未定义符号的检查（让opt提供这些符号）
 if(APPLE)
-    target_link_options(OllvmPlugins PRIVATE -undefined dynamic_lookup)
+    target_link_options(OllvmPlugins PRIVATE -undefined dynamic_lookup -stdlib=libstdc++)
 else()
     # 检查链接器类型并使用适当的选项
     execute_process(COMMAND ${CMAKE_LINKER} --help
@@ -83,11 +79,10 @@ else()
         ERROR_QUIET)
 
     if(LINKER_HELP_OUTPUT MATCHES "--allow-shlibs-undefined")
-        # 明确指定使用 libstdc++ 并链接 libstdc++abi
-        target_link_options(OllvmPlugins PRIVATE -Wl,--allow-shlibs-undefined)
+        target_link_options(OllvmPlugins PRIVATE -Wl,--allow-shlibs-undefined -stdlib=libstdc++)
     else()
-        # 使用替代方案：不检查未定义符号，并明确指定使用 libstdc++ 和链接 libstdc++abi
-        target_link_options(OllvmPlugins PRIVATE -Wl,--unresolved-symbols=ignore-all)
+        # 使用替代方案：不检查未定义符号
+        target_link_options(OllvmPlugins PRIVATE -Wl,--unresolved-symbols=ignore-all -stdlib=libstdc++)
     endif()
 endif()
 
@@ -95,7 +90,7 @@ endif()
 add_custom_target(crypto_runtime
     # 步骤 1: 编译 .cpp 为 .bc，并添加 black3 的头文件路径
     COMMAND ${CMAKE_CXX_COMPILER}
-    -std=c++23 -O0 -g -fPIC
+    -std=c++20 -O0 -g -fPIC
     # -mllvm -enable-cffobf
     # -mllvm -enable-splitobf
     # -mllvm -enable-subobf
@@ -106,7 +101,6 @@ add_custom_target(crypto_runtime
     -o ${CMAKE_BINARY_DIR}/crypto_runtime.bc
     -I${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/include
     -I${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/blake3/c
-    # 为 .bc 文件的编译也明确指定 libstdc++
     # 步骤 2: 确保目标目录存在
     COMMAND ${CMAKE_COMMAND} -E make_directory "$ENV{HOME}/.ollvm"
     # 步骤 3: 复制生成的 .bc 文件到目标位置

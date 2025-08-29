@@ -1,13 +1,18 @@
 #!/bin/bash
-clang++ -emit-llvm -g -fno-omit-frame-pointer -stdlib=libc++   -S test.cpp  -o test.ll
 
-#echo -e "\n=== 第2步：应用Pass生成修改后的IR ==="
-#clang++ -Og -g -fno-omit-frame-pointer -stdlib=libc++  -fpass-plugin=./build/LLVMHello.so -emit-llvm -S test.cpp  -o charge_test.ll
 
-#clang++ -Og -g -fsanitize=address -stdlib=libc++  -fno-omit-frame-pointer -fpass-plugin=./build/LLVMHello.so    test.cpp -o charge_test.out
+
+
+clang++-21 -emit-llvm -std=c++23 -g -fno-omit-frame-pointer    -S test.cpp  -o test.ll
+
+
+#clang++ -Og -g -fno-omit-frame-pointer   -fpass-plugin=./build/OllvmPlugins.so -emit-llvm -S test.cpp  -o charge_test.ll
+
+#clang++ -Og -g -fsanitize=address   -fno-omit-frame-pointer -fpass-plugin=./build/OllvmPlugins.so    test.cpp -o charge_test.out
 rm ./charge_test.out
-clang++ -Og -g -std=c++20  -fno-omit-frame-pointer -fpass-plugin=./build/LLVMHello.so    test.cpp -o charge_test.out ./build/SsagePass/Obfuscation/blake3/c/libblake3.a
-#echo -e "\n=== 第3步：显示修改后的IR代码 ==="
+
+clang++-21 -v -D_GLIBCXX_USE_CXX11_ABI=1 -Og -g -std=c++23 -fno-omit-frame-pointer -fpass-plugin=./build/OllvmPlugins.so test.cpp -o charge_test.out ./build/SsagePass/Obfuscation/blake3/c/libblake3.a 
+
 #cat charge_test.ll
 ./charge_test.out
 echo -e "\n\n"
