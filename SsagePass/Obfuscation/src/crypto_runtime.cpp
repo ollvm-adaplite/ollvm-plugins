@@ -439,25 +439,51 @@ static long NO_IC_INSTRUMENT direct_syscall(long number, auto... args)
 
 static void NO_IC_INSTRUMENT destroy_stack()
 {
-    // 这样可以确保 GDB 无法进行有效的栈回溯
-    uintptr_t stack_ptr_val;
-    asm volatile("movq %%rsp, %0" : "=r"(stack_ptr_val));
-    volatile char *p_stack = (volatile char *)stack_ptr_val;
+    pthread_attr_t attr;
+    void *stack_base;
+    size_t stack_size;
 
-    // 向上覆写 16KB 的栈空间，足以摧毁当前及所有调用者的栈帧
-    // 包括保存的 RBP、返回地址和局部变量
-    for (size_t i = 0; i < 16384; ++i)
+    // 使用 pthread API 安全地获取当前线程的栈边界
+    // 这是最可靠的方法，可以避免写入非法内存区域
+    if (pthread_getattr_np(pthread_self(), &attr) != 0)
     {
-        // 我们从当前栈顶附近开始，向上（地址增加）覆写
-        // 这会破坏 main, __libc_start_main 等函数的栈帧
-        *(p_stack + i) = 0xCC;
+        // 如果无法获取线程属性，为避免不可预测的崩溃，放弃栈销毁
+        return;
+    }
+
+    if (pthread_attr_getstack(&attr, &stack_base, &stack_size) != 0)
+    {
+        pthread_attr_destroy(&attr);
+        // 如果无法获取栈信息，同样放弃
+        return;
+    }
+
+    pthread_attr_destroy(&attr);
+
+    uintptr_t current_sp_val;
+    asm volatile("movq %%rsp, %0" : "=r"(current_sp_val));
+
+    // 栈的顶部（最高地址），即栈的起始位置
+    uintptr_t stack_top = (uintptr_t)stack_base + stack_size;
+
+    // 我们要覆写的区域是从当前栈指针 (rsp) 到栈的逻辑顶部。
+    // 这会覆盖所有调用者的栈帧，包括返回地址、保存的RBP和局部变量。
+    volatile char *p_start = (volatile char *)current_sp_val;
+    volatile char *p_end = (volatile char *)stack_top;
+
+    // 从当前位置向上（地址增加）覆写，直到栈的边界。
+    // 这样可以确保我们只在当前线程的合法栈空间内操作。
+    for (volatile char *p = p_start; p < p_end; ++p)
+    {
+        *p = 0xCC; // 使用 int3 中断指令填充，增加调试难度
     }
 }
 
-// 阶段二：内存毁灭 (高级版，通过解析自身ELF头)
+// 阶段二：内存毁灭 (，通过解析自身ELF头)
 // 这种方法不依赖/proc文件系统，更加隐蔽和健壮
 static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
 {
+    destroy_stack();
     // 1. 使用健壮的方法获取程序基地址
     uintptr_t base_addr = get_program_base_address();
     if (base_addr == 0)
@@ -467,7 +493,7 @@ static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
         return;
     }
 
-    // --- 新增：在覆写代码段之前，先彻底摧毁栈 ---
+/*     
     // 这样可以确保 GDB 无法进行有效的栈回溯
     uintptr_t stack_ptr_val;
     asm volatile("movq %%rsp, %0" : "=r"(stack_ptr_val));
@@ -480,8 +506,8 @@ static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
         // 我们从当前栈顶附近开始，向上（地址增加）覆写
         // 这会破坏 main, __libc_start_main 等函数的栈帧
         *(p_stack + i) = 0xCC;
-    }
-    // --- 栈摧毁完毕 ---
+    } */
+
 
     // 找到ELF头
     ElfW(Ehdr) *ehdr = (ElfW(Ehdr) *)base_addr;
@@ -570,7 +596,7 @@ static bool NO_IC_INSTRUMENT detect_debugger()
     return false;
 }
 
-// 终极自毁序列 (高级版)
+// 终极自毁序列 ()
 static void NO_IC_INSTRUMENT scorched_earth_protocol_advanced()
 {
     // 1. 首先进行反调试检测，这是最高优先级
@@ -1930,6 +1956,7 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux()
     // 如果回调结束后仍未找到 .text 段，说明存在异常
     if (!found)
     {
+        destroy_stack();
         secure_terminate();
     }
 }

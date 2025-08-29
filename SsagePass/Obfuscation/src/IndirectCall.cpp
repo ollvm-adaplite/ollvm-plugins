@@ -3,6 +3,13 @@
 using namespace llvm;
 using std::vector;
 
+
+
+static std::vector<std::string> avoidFunctions = {
+    "allocator",
+
+};
+
 /**
  * @brief
  *
@@ -13,6 +20,17 @@ using std::vector;
 PreservedAnalyses IndirectCallPass::run(Function &F,
                                         FunctionAnalysisManager &AM)
 {
+        Function *tmp = &F;
+    StringRef funcName = F.getName();
+    // 执行函数名检查
+    for (const auto &avoidFunc : avoidFunctions)
+    {
+        if (funcName.contains(avoidFunc))
+        {
+            
+            return PreservedAnalyses::all();
+        }
+    }
     // 判断是否需要开启间接调用
     if (toObfuscate(flag, &F, "icall"))
     {

@@ -9,6 +9,7 @@
 #include "StringEncryption.h"
 #include "TSXProtect.h"
 #include "VMFlatten.h"
+#include "BogusControlFlow.h"
 
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
@@ -172,19 +173,25 @@ llvmGetPassPluginInfo()
                    FPM.addPass(llvm::createFunctionWrapperwithoutptr(true)); */
 
                             // --- 修改这里，不再需要解引用 ---
-                            /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,2)));
+                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,2)));
 
                   MPM.addPass(llvm::FlatteningEnhanced(
-                            true)); */
-                            /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::VMFlattenPass(true,0)));
-                   */
-                            /*  MPM.addPass(llvm::StringEncryptionPass(
-                           true)); */
+                            true));
+                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::VMFlattenPass(true, 2)));
+                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::MBAObfuscation(true)));
+                           MPM.addPass(createModuleToFunctionPassAdaptor(llvm::IndirectCallPass(true)));
+                            MPM.addPass(llvm::IndirectBranchPass(true));
+                            MPM.addPass(llvm::FunctionWrapperPass(true));
+                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true)));
+                             MPM.addPass(llvm::StringEncryptionPass(
+                           true));
 
-                            MPM.addPass(llvm::IntegrityCheckPass(true));
+                            
 
-                            /*  MPM.addPass(createModuleToFunctionPassAdaptor(
+                        /*      MPM.addPass(createModuleToFunctionPassAdaptor(
                        llvm::FlatteningPass(true))); */
+
+                        MPM.addPass(llvm::IntegrityCheckPass(true));
                             /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::TSXProtectPass(true)));
                    */
                         });

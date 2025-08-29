@@ -1431,6 +1431,12 @@ bool CryptoUtils::myprng_seed()
                              static_cast<unsigned char>(this->key[i_key]));
             debuglog("snprintf result: " + std::to_string(snprintf_result));
             debuglog("Hex representation: " + std::string(hex_byte));
+
+           /*  for (auto c : hex_byte)
+            {
+                debuglog(std::string("Hex char: '") + c + "'");
+            } */
+
             this->seed.append(hex_byte);
             debuglog("Appended to seed string, current length: " + std::to_string(this->seed.length()));
         }

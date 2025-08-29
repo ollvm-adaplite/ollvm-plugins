@@ -12,6 +12,15 @@ using std::vector;
 // Stats
 STATISTIC(Flattened, "Functions flattened");
 
+
+
+static std::vector<std::string> avoidFunctions = {
+    "allocator",
+
+};
+
+
+
 PreservedAnalyses FlatteningPass::run(Function &F,
                                       FunctionAnalysisManager &AM)
 {
@@ -393,6 +402,13 @@ void FlatteningPass::flatten(Function &F)
         }
     }
     fixStack(F);  // 修复逃逸变量和PHI指令
+
+    // 验证函数 IR，若验证失败则放弃本次平坦化（避免在后续优化中崩溃）
+    /* if (verifyFunction(F, &errs())) {
+        errs() << "Flattening: produced invalid IR for function " << F.getName()
+               << ". Reverting/abandoning flatten.\n";
+        return;
+    } */
 }
 
 FlatteningPass *llvm::createFlattening(bool flag)

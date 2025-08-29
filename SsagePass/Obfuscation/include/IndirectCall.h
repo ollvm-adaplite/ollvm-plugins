@@ -15,7 +15,7 @@
 #include <random>
 
 namespace llvm{
-    class IndirectCallPass : public PassInfoMixin<IndirectCallPass>{ 
+    class IndirectCallPass : public PassInfoMixin<IndirectCallPass>{
         public:
             bool flag;
             std::vector<CallInst *> CallSites;
@@ -24,9 +24,11 @@ namespace llvm{
             std::vector<Function *> Callees;
             std::map<Function *, unsigned> CalleeNumbering;
             CryptoUtils RandomEngine;
-            IndirectCallPass(bool flag){
-                this->flag = flag;
-            } // 携带flag的构造函数
+            // 使用成员初始化列表初始化所有成员指针
+            IndirectCallPass(bool flag) : flag(flag), IPO(nullptr), Options(nullptr) {
+                // CryptoUtils RandomEngine 会被默认构造
+                // std::vector 和 std::map 也会被默认构造为空
+            }
             bool doIndirctCall(Function &F);
             PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
             GlobalVariable *getIndirectCallees(Function &F, ConstantInt *EncKey);

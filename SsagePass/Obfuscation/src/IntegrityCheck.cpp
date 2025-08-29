@@ -459,6 +459,9 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
     Function *CtorFunc =
             Function::Create(FunctionType::get(Type::getVoidTy(Ctx), false),
                              GlobalValue::InternalLinkage, "__integrity_ctor", &M);
+    // 标记为不被运行时插桩，防止无限递归或运行时函数被再次处理
+    CtorFunc->addFnAttr("no_ic_instrument");
+
     BasicBlock *CtorBB = BasicBlock::Create(Ctx, "entry", CtorFunc);
     IRBuilder<> CtorBuilder(CtorBB);
     CtorBuilder.CreateCall(VerifySelfFunc, {});
@@ -502,8 +505,13 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
         Constant *funcPtr = ConstantExpr::getPointerCast(
                 F, PointerType::getUnqual(Type::getInt8Ty(Ctx)));
 
-        IRBuilder<> EntryBuilder(&F->getEntryBlock().front());
-        EntryBuilder.CreateCall(VerifyMemFunc, {funcPtr});
+        /* IRBuilder<> EntryBuilder(&F->getEntryBlock().front()); */
+
+                // 在入口块使用第一个合法的插入点，避免插入到 PHI/alloca/landingpad 之前
+        Instruction *EntryIP = &*F->getEntryBlock().getFirstInsertionPt();
+        IRBuilder<> EntryBuilder(EntryIP);
+         EntryBuilder.CreateCall(VerifyMemFunc, {funcPtr});
+
 
         for (BasicBlock &BB : *F)
         {

@@ -36,7 +36,7 @@ static cl::opt<bool> OnlyStr("mmonlystr",
                              cl::desc("Encrypt string variable only"),
                              cl::init(true));
 
-// --- 辅助函数 ---
+//  辅助函数
 
 // 生成密码学安全的随机字节向量。
 static std::vector<uint8_t> getRandomBytes(size_t n)
@@ -183,7 +183,7 @@ static void linkRuntime(Module &M)
 while (0)
 #endif
 
-// --- Pass 主逻辑 ---
+//  Pass 主逻辑
 
 PreservedAnalyses StringEncryptionPass::run(Module &M,
                                             ModuleAnalysisManager &AM)
@@ -304,7 +304,7 @@ void StringEncryptionPass::insertDecryptionCtor(
 
     IRBuilder<> Builder(EntryBB);
 
-    // --- 策略1: 数据分散与双重随机化 ---
+    //  策略1: 数据分散与双重随机化
     // 随机化块大小 (4 or 8 bytes)
     const size_t possibleChunkSizes[] = {4, 8};
     const size_t chunkSize = possibleChunkSizes[getSecureRandomInt(0, 1)];
@@ -351,7 +351,7 @@ void StringEncryptionPass::insertDecryptionCtor(
                            ".dummy_data_" + std::to_string(i));
     }
 
-    // --- 策略2: 控制流平坦化 ---
+    //  策略2: 控制流平坦化
     Type *KeyArrayTy = ArrayType::get(Type::getInt8Ty(Ctx), paddedKeySize);
     Value *deobfuscatedKeyPtr =
             Builder.CreateAlloca(KeyArrayTy, nullptr, "deobf_key_stack");
@@ -387,10 +387,9 @@ void StringEncryptionPass::insertDecryptionCtor(
         Builder.CreateBr(DispatchBB);
     }
 
-    // --- 状态机结束，继续执行正常逻辑 ---
+    //  状态机结束，继续执行正常逻辑
     Builder.SetInsertPoint(EndBB);
 
-    // ... (后续调用解密函数的代码保持不变) ...
     Type *Int8Ty = Type::getInt8Ty(Ctx);
     Type *NonceArrayTy = ArrayType::get(Int8Ty, 24);  // Changed from 12 to 24
     auto *NonceGV =
