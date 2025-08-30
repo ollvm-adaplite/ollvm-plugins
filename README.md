@@ -30,6 +30,6 @@
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License. You can view the full license [here](./LICENSE).
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License. You can view the full license [here](https://github.com/ollvm-adaplite/ollvm-plugins/blob/main/LICENCE).
 根据该License严禁将该项目用于任何商用目的。
 ![CC BY-NC License](https://licensebuttons.net/l/by-nc/4.0/88x31.png)
