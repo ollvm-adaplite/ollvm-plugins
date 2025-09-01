@@ -23,7 +23,7 @@
 - [x] [FlatteningEnhanced](SsagePass/Obfuscation/include/FlatteningEnhanced.h)
 - [ ] [Flattening](SsagePass/Obfuscation/src/Flattening.cpp)
 - [ ] [IntegrityCheck](SsagePass/Obfuscation/src/IntegrityCheck.cpp)
-- [x] [BogusControlFlow](SsagePass/Obfuscation/src/BogusControlFlow.cpp)
+- [ ] [BogusControlFlow](SsagePass/Obfuscation/src/BogusControlFlow.cpp)
 
 没有勾选的表示存在问题或者处于实验性阶段。
 
