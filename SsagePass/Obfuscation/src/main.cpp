@@ -63,7 +63,7 @@
 // 使用 llvm 命名空间，因为 FlatteningEnhanced.h 中类和函数都在此命名空间
 using namespace llvm;
 
-// --- HelloPass (for testing or other purposes, kept as is) ---
+//  HelloPass (for testing or other purposes, kept as is) 
 struct HelloPass : public PassInfoMixin<HelloPass>
 {
     PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM)
@@ -134,7 +134,7 @@ private:
     }
 };
 
-// --- LLVM Pass Plugin Registration ---
+//  LLVM Pass Plugin Registration 
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo()
 {
@@ -150,7 +150,7 @@ llvmGetPassPluginInfo()
                     return true;
                   }
                   if (Name == "vm-flatten") {
-                    // --- 修改这里，不再需要解引用 ---
+                    //  不再需要解引用 
                     //MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,0)));
                     MPM.addPass(llvm::FlatteningEnhanced(
                             true));
@@ -163,7 +163,7 @@ llvmGetPassPluginInfo()
                 PB.registerPipelineStartEPCallback(
                         [](ModulePassManager &MPM, OptimizationLevel Level)
                         {
-                            // --- 修改这里，不再需要解引用 ---
+                            //  不再需要解引用 
                             /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,2)));
 
                   MPM.addPass(llvm::FlatteningEnhanced(
@@ -172,28 +172,24 @@ llvmGetPassPluginInfo()
                             /*            llvm::FunctionPassManager FPM;
                    FPM.addPass(llvm::createFunctionWrapperwithoutptr(true)); */
 
-                            // --- 修改这里，不再需要解引用 ---
-                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,2)));
+                            //  不再需要解引用 
+                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true, 2)));
 
-                  MPM.addPass(llvm::FlatteningEnhanced(
-                            true));
+                            MPM.addPass(llvm::FlatteningEnhanced(
+                                    true));
                             MPM.addPass(createModuleToFunctionPassAdaptor(llvm::VMFlattenPass(true, 2)));
                             MPM.addPass(createModuleToFunctionPassAdaptor(llvm::MBAObfuscation(true)));
-                           MPM.addPass(createModuleToFunctionPassAdaptor(llvm::IndirectCallPass(true)));
+                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::IndirectCallPass(true)));
                             MPM.addPass(llvm::StringEncryptionPass(
-                           true));
-                           MPM.addPass(llvm::IntegrityCheckPass(true));
+                                    true));
+                            MPM.addPass(llvm::IntegrityCheckPass(true));
                             MPM.addPass(llvm::IndirectBranchPass(true));
                             MPM.addPass(llvm::FunctionWrapperPass(true));
-                           /*  MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true))); */
-                            
+                            /*  MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true))); */
 
-                            
-
-                        /*      MPM.addPass(createModuleToFunctionPassAdaptor(
+                            /*      MPM.addPass(createModuleToFunctionPassAdaptor(
                        llvm::FlatteningPass(true))); */
 
-                        
                             /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::TSXProtectPass(true)));
                    */
                         });
