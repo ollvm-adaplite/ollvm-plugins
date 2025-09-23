@@ -14,6 +14,15 @@
 #define NO_IC_INSTRUMENT
 #endif
 
+
+#if defined(_MSC_VER)
+  #define FORCE_INLINE __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+  #define FORCE_INLINE inline __attribute__((always_inline))
+#else
+  #define FORCE_INLINE inline
+#endif
+
 // 编译时使用的加密函数
 // Encrypts data and produces a 16-byte authentication tag using
 // XChaCha20-Poly1305.

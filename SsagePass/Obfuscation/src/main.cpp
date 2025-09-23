@@ -180,18 +180,20 @@ llvmGetPassPluginInfo()
                             MPM.addPass(createModuleToFunctionPassAdaptor(llvm::VMFlattenPass(true, 2)));
                             MPM.addPass(createModuleToFunctionPassAdaptor(llvm::MBAObfuscation(true)));
                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::IndirectCallPass(true)));
+                            MPM.addPass(llvm::StringEncryptionPass(
+                           true));
+                           MPM.addPass(llvm::IntegrityCheckPass(true));
                             MPM.addPass(llvm::IndirectBranchPass(true));
                             MPM.addPass(llvm::FunctionWrapperPass(true));
-                            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true)));
-                             MPM.addPass(llvm::StringEncryptionPass(
-                           true));
+                           /*  MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true))); */
+                            
 
                             
 
                         /*      MPM.addPass(createModuleToFunctionPassAdaptor(
                        llvm::FlatteningPass(true))); */
 
-                        MPM.addPass(llvm::IntegrityCheckPass(true));
+                        
                             /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::TSXProtectPass(true)));
                    */
                         });

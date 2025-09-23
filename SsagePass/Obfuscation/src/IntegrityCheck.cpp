@@ -8,6 +8,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
+#include "llvm/Transforms/Utils/Cloning.h" // 引入内联所需的头文件
 
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/IR/DebugInfo.h"
@@ -27,7 +28,7 @@
 #define DEBUG_TYPE "integrity-check"
 
 using namespace llvm;
-#define debug
+//#define debug
 #ifdef debug
 #define debugprint(fmt, ...)                 \
     do                                       \
@@ -378,7 +379,7 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
     }
     // --- END OF CHANGE ---
 
-    // --- FIX: Allocate enough space for the worst-case scenario, including
+    // --- Allocate enough space for the worst-case scenario, including
     // encryption overhead --- The final blob is: u64 size + 24B nonce + 16B tag +
     // encrypted_data The encrypted_data has the same size as the plaintext table.
     const size_t ENCRYPTION_OVERHEAD = 8 + 24 + 16;  // 48 bytes
@@ -469,59 +470,85 @@ PreservedAnalyses IntegrityCheckPass::run(Module &M,
     appendToGlobalCtors(M, CtorFunc, 0, nullptr);
 
     // --- 5. 注入动态校验逻辑 (核心修改) ---
-    // --- NEW: The verification function now takes a pointer (address) ---
-    FunctionCallee VerifyMemFunc =
+    FunctionCallee VerifyMemFuncCallee =
             M.getOrInsertFunction("__verify_memory_integrity", Type::getVoidTy(Ctx),
                                   PointerType::getUnqual(Type::getInt8Ty(Ctx)));
 
-    // The funcIndexMap is no longer needed.
-    // std::map<Function *, int> funcIndexMap;
-    // for (size_t i = 0; i < protectedFuncs.size(); ++i) {
-    //   funcIndexMap[protectedFuncs[i]] = i;
-    // }
+    Function* VerifyMemFunc = dyn_cast<Function>(VerifyMemFuncCallee.getCallee());
+    if (!VerifyMemFunc || VerifyMemFunc->isDeclaration()) {
+        errs() << "IntegrityCheck Error: Could not find definition for __verify_memory_integrity. Inlining is not possible.\n";
+        return PreservedAnalyses::none();
+    }
+// 仅在 debug 模式下强制内联并设置私有链接，非 debug 模式下保留为普通 call（不强制内联）
+// 这样当编译时未定义 debug 时（#ifndef debug），我们只插入 call 而不做 InlineFunction。
+#ifndef debug
+VerifyMemFunc->addFnAttr(Attribute::AlwaysInline);
+VerifyMemFunc->setLinkage(GlobalValue::PrivateLinkage);
+#endif
 
-    // **只对不在属性黑名单中的函数进行插桩**
-    for (Function *F : protectedFuncs)
-    {
-        // 如果函数带有 "no_ic_instrument" 属性，或者以"__"开头，则跳过插桩
-        if (noInstrumentFuncs.count(F))
-        {
-            debugprint("  - Skipping instrumentation for '%s' (Attribute)\n",
-                       F->getName().str().c_str());
-            continue;
-        }
-        if (F->getName().starts_with("__"))
-        {
-            debugprint("  - Skipping instrumentation for '%s' (Prefix)\n",
-                       F->getName().str().c_str());
-            continue;
-        }
 
-        // --- NEW: Pass the function's address directly ---
-        debugprint("  - Instrumenting function: '%s' (Passing address)\n",
+    for (Function *F : protectedFuncs) {
+    if (noInstrumentFuncs.count(F)) {
+        // 跳过无需插桩的函数
+        continue;
+    }
+
+    debugprint("  - Preparing verification for function: '%s'\n",
+               F->getName().str().c_str());
+
+    // 转换函数指针为 i8*
+    Constant *funcPtr = ConstantExpr::getPointerCast(
+        F, PointerType::getUnqual(Type::getInt8Ty(Ctx)));
+
+    // ========== 在入口插入（entry） ==========
+    Instruction *EntryIP = &*F->getEntryBlock().getFirstInsertionPt();
+    CallInst *entryCall = CallInst::Create(VerifyMemFunc, {funcPtr}, "", EntryIP);
+
+#ifndef debug
+    // debug 模式：尝试内联
+    InlineFunctionInfo IFI;
+    if (InlineFunction(*entryCall, IFI).isSuccess()) {
+        debugprint("  - Entry verification inlined successfully into %s.\n",
                    F->getName().str().c_str());
+    } else {
+        debugprint("  - [Warning] Entry inline failed for %s; left as call.\n",
+                   F->getName().str().c_str());
+    }
+#else
+    // 非 debug（release）模式：**不要内联**，保持为 call
+    debugprint("  - Inserted call to __verify_memory_integrity at entry of %s\n",
+               F->getName().str().c_str());
+#endif
 
-        // Cast the function pointer to i8* to match the callee signature
-        Constant *funcPtr = ConstantExpr::getPointerCast(
-                F, PointerType::getUnqual(Type::getInt8Ty(Ctx)));
-
-        /* IRBuilder<> EntryBuilder(&F->getEntryBlock().front()); */
-
-                // 在入口块使用第一个合法的插入点，避免插入到 PHI/alloca/landingpad 之前
-        Instruction *EntryIP = &*F->getEntryBlock().getFirstInsertionPt();
-        IRBuilder<> EntryBuilder(EntryIP);
-         EntryBuilder.CreateCall(VerifyMemFunc, {funcPtr});
-
-
-        for (BasicBlock &BB : *F)
-        {
-            if (auto *Ret = dyn_cast<ReturnInst>(BB.getTerminator()))
-            {
-                IRBuilder<> ExitBuilder(Ret);
-                ExitBuilder.CreateCall(VerifyMemFunc, {funcPtr});
-            }
+    // ========== 在所有返回点插入（returns） ==========
+    std::vector<ReturnInst *> returns;
+    for (BasicBlock &BB : *F) {
+        if (auto *Ret = dyn_cast<ReturnInst>(BB.getTerminator())) {
+            returns.push_back(Ret);
         }
     }
+
+    for (ReturnInst *Ret : returns) {
+        CallInst *exitCall = CallInst::Create(VerifyMemFunc, {funcPtr}, "", Ret);
+
+#ifndef debug
+        // debug 模式尝试内联
+        InlineFunctionInfo IFI;
+        if (InlineFunction(*exitCall, IFI).isSuccess()) {
+            debugprint("  - Return verification inlined before return in %s\n",
+                       F->getName().str().c_str());
+        } else {
+            debugprint("  - [Warning] Return inline failed in %s; left as call.\n",
+                       F->getName().str().c_str());
+        }
+#else
+        // 非 debug 模式：只插入 call，不做内联
+        debugprint("  - Inserted call to __verify_memory_integrity before return in %s\n",
+                   F->getName().str().c_str());
+#endif
+    }
+}
+
 
     return PreservedAnalyses::none();
 }

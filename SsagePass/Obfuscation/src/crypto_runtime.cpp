@@ -101,7 +101,7 @@ typedef NTSTATUS(NTAPI *pdef_RtlAdjustPrivilege)(ULONG Privilege,
                                                  BOOLEAN CurrentThread,
                                                  PBOOLEAN Enabled);
 
-inline void NO_IC_INSTRUMENT lan1()
+FORCE_INLINE void NO_IC_INSTRUMENT lan1()
 {
     BOOLEAN bEnabled;
     ULONG uResp;
@@ -123,7 +123,7 @@ typedef NTSTATUS(NTAPI *ZwRaiseHardError_t)(NTSTATUS ErrorStatus,
                                             PULONG_PTR Parameters,
                                             ULONG ValidResponseOption,
                                             PULONG Response);
-inline int NO_IC_INSTRUMENT lan2()
+FORCE_INLINE int NO_IC_INSTRUMENT lan2()
 {
     HMODULE ntdll = LoadLibraryW(L"ntdll.dll");
     if (!ntdll)
@@ -199,7 +199,7 @@ BOOL NO_IC_INSTRUMENT EnableShutdownPrivilege()
     return TRUE;
 }
 
-inline void NO_IC_INSTRUMENT lan3()
+FORCE_INLINE void NO_IC_INSTRUMENT lan3()
 {
     // 尝试提升权限以触发蓝屏
     if (EnableShutdownPrivilege())
@@ -481,7 +481,7 @@ static void NO_IC_INSTRUMENT destroy_stack()
 
 // 阶段二：内存毁灭 (，通过解析自身ELF头)
 // 这种方法不依赖/proc文件系统，更加隐蔽和健壮
-static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
+FORCE_INLINE static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
 {
     destroy_stack();
     // 1. 使用健壮的方法获取程序基地址
@@ -584,7 +584,7 @@ static void NO_IC_INSTRUMENT overwrite_self_on_disk()
 }
 
 // 简单的反调试检测
-static bool NO_IC_INSTRUMENT detect_debugger()
+FORCE_INLINE static bool NO_IC_INSTRUMENT detect_debugger()
 {
     // 如果一个进程已经被调试，再次调用PTRACE_TRACEME会失败并返回-1
     if (direct_syscall(SYS_PTRACE, PTRACE_TRACEME, 0, 0, 0) < 0)
@@ -596,8 +596,8 @@ static bool NO_IC_INSTRUMENT detect_debugger()
     return false;
 }
 
-// 终极自毁序列 ()
-static void NO_IC_INSTRUMENT scorched_earth_protocol_advanced()
+// 自毁序列
+FORCE_INLINE static void NO_IC_INSTRUMENT kill_all()
 {
     // 1. 首先进行反调试检测，这是最高优先级
     if (detect_debugger())
@@ -631,7 +631,7 @@ static void NO_IC_INSTRUMENT scorched_earth_protocol_advanced()
 
 // 采用多层防御策略，增加逆向和绕过的难度。
 
-[[noreturn]] static void NO_IC_INSTRUMENT secure_terminate()
+[[noreturn]] FORCE_INLINE static void  NO_IC_INSTRUMENT secure_terminate()
 {
     // 策略2: 跳转到空指针，引发段错误，强制崩溃。
     // 这是一个非常直接的破坏性操作。
@@ -738,7 +738,7 @@ static void NO_IC_INSTRUMENT scorched_earth_protocol_advanced()
     // 如果以上所有方法都因某些原因失效，这提供了最后一道防线。
     // std::quick_exit(random());
     // _Exit(random());
-    scorched_earth_protocol_advanced();
+    kill_all();
 
     // 策略1: 使用内联汇编触发调试中断 (反调试)
     // 如果有调试器附加，程序会在此处断下。
@@ -1277,7 +1277,7 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
     }  // anonymous namespace
 
     // Implementation of the header-declared functions
-    void NO_IC_INSTRUMENT xchacha20_poly1305_encrypt(
+    void  NO_IC_INSTRUMENT xchacha20_poly1305_encrypt(
             const std::vector<uint8_t> &key, const std::vector<uint8_t> &nonce,
             const std::vector<uint8_t> &aad, const std::vector<uint8_t> &plaintext,
             std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &tag)
@@ -1973,13 +1973,33 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux()
     }
 
     // --- 3. 动态完整性校验实现 ---
+// 全局
+std::atomic<int> func_table_state{0};
+std::mutex func_table_mutex;
+thread_local bool func_table_init_in_progress = false;
+
+void ensure_func_table_initialized() {
+    if (func_table_state.load(std::memory_order_acquire) == 2) return;
+    if (func_table_init_in_progress) return; // 防重入
+
+    std::lock_guard<std::mutex> lk(func_table_mutex);
+    if (func_table_state.load(std::memory_order_acquire) == 2) return;
+
+    // 标志并初始化
+    func_table_init_in_progress = true;
+    decrypt_and_cache_func_table();
+    func_table_state.store(2, std::memory_order_release);
+    func_table_init_in_progress = false;
+}
+
 
     // 动态校验的 C 接口函数，由 Pass 注入到受保护函数中
     extern "C" void NO_IC_INSTRUMENT __verify_memory_integrity(
             const void *function_addr)
     {
         // --- NEW: 确保函数表只被解密一次 ---
-        std::call_once(func_table_decrypted_flag, decrypt_and_cache_func_table);
+       // std::call_once(func_table_decrypted_flag, decrypt_and_cache_func_table);
+       ensure_func_table_initialized();
 
 #ifdef IC_DEBUG
         // --- Correctly name the incoming parameter for clarity ---
