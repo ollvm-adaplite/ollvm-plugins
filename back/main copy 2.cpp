@@ -570,7 +570,7 @@ llvmGetPassPluginInfo()
                             }
                             if (Name == "vm-flatten")
                             {
-                                // --- 修改这里，不再需要解引用 ---
+                                // --- 不再需要解引用 ---
                                 MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true)));
                                 return true;
                             }
@@ -579,7 +579,7 @@ llvmGetPassPluginInfo()
                 PB.registerPipelineStartEPCallback(
                         [](ModulePassManager &MPM, OptimizationLevel Level)
                         {
-                            // --- 修改这里，不再需要解引用 ---
+                            // --- 不再需要解引用 ---
                             MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true)));
                         });
             }};
