@@ -115,6 +115,19 @@ add_custom_target(crypto_runtime
     VERBATIM
 )
 
-# 新增：将 crypto_runtime 添加为 OllvmPlugins 的依赖项
-# 这样在构建 OllvmPlugins.so 时会自动生成 crypto_runtime.bc
-add_dependencies(OllvmPlugins crypto_runtime)
+add_custom_target(flattening_runtime
+    COMMAND ${CMAKE_CXX_COMPILER}
+    -std=c++23 -O0 -g -fPIC
+    -emit-llvm -c ${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/src/flattening_runtime.cpp
+    -o ${CMAKE_BINARY_DIR}/flattening_runtime.bc
+    -I${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/include
+    -I${CMAKE_CURRENT_SOURCE_DIR}/SsagePass/Obfuscation/blake3/c
+    # 安装到 home 目录
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$ENV{HOME}/.ollvm"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/flattening_runtime.bc "$ENV{HOME}/.ollvm/flattening_runtime.bc"
+    COMMENT "Generating and installing flattening_runtime.bc to ~/.ollvm"
+    VERBATIM
+)
+
+
+add_dependencies(OllvmPlugins crypto_runtime flattening_runtime)
