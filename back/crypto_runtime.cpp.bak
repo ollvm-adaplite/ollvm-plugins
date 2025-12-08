@@ -588,12 +588,7 @@ FORCE_INLINE static bool NO_IC_INSTRUMENT detect_debugger()
     // 如果一个进程已经被调试，再次调用PTRACE_TRACEME会失败并返回-1
     if (direct_syscall(SYS_PTRACE, PTRACE_TRACEME, 0, 0, 0) < 0)
     {
-#ifdef debug
-        debugprint("Detecting debugger via ptrace...");
-        return false;
-#else
         return true;
-#endif
     }
     // 如果没有被调试，我们需要取消这个追踪请求
     direct_syscall(SYS_PTRACE, PTRACE_DETACH, 0, 0, 0);
@@ -2116,7 +2111,7 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux()
 #ifdef _WIN32
         verify_text_section_integrity_windows();
 #else
-    verify_text_section_integrity_linux();
+        verify_text_section_integrity_linux();
 #endif
     }
 
@@ -2142,178 +2137,178 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux()
     }
 
     // 动态校验的 C 接口函数，由 Pass 注入到受保护函数中
-    //     extern "C" void NO_IC_INSTRUMENT __verify_memory_integrity(
-    //             const void *function_addr)
-    //     {
-    //         // --- NEW: 确保函数表只被解密一次 ---
-    //         // std::call_once(func_table_decrypted_flag, decrypt_and_cache_func_table);
-    //         ensure_func_table_initialized();
+//     extern "C" void NO_IC_INSTRUMENT __verify_memory_integrity(
+//             const void *function_addr)
+//     {
+//         // --- NEW: 确保函数表只被解密一次 ---
+//         // std::call_once(func_table_decrypted_flag, decrypt_and_cache_func_table);
+//         ensure_func_table_initialized();
 
-    // #ifdef IC_DEBUG
-    //         // --- Correctly name the incoming parameter for clarity ---
-    //         const void *real_function_addr = function_addr;
-    //         fprintf(stderr, "\n[IC-RUNTIME] __verify_memory_integrity(real_addr: %p)\n",
-    //                 real_function_addr);
-    // #else
-    //     // In non-debug mode, just use the original name to avoid unused variable
-    //     // warnings
-    //     const void *real_function_addr = function_addr;
-    // #endif
+// #ifdef IC_DEBUG
+//         // --- Correctly name the incoming parameter for clarity ---
+//         const void *real_function_addr = function_addr;
+//         fprintf(stderr, "\n[IC-RUNTIME] __verify_memory_integrity(real_addr: %p)\n",
+//                 real_function_addr);
+// #else
+//     // In non-debug mode, just use the original name to avoid unused variable
+//     // warnings
+//     const void *real_function_addr = function_addr;
+// #endif
 
-    //         // --- 核心修复：处理 ASLR ---
-    //         // 1. 获取程序在内存中的实际基地址
-    //         uintptr_t base_addr = get_program_base_address();
-    //         // 2. 计算要查找的相对地址 (RVA)
-    //         uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
+//         // --- 核心修复：处理 ASLR ---
+//         // 1. 获取程序在内存中的实际基地址
+//         uintptr_t base_addr = get_program_base_address();
+//         // 2. 计算要查找的相对地址 (RVA)
+//         uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
 
-    // #ifdef IC_DEBUG
-    //         fprintf(stderr, "  - Program Base Addr: %p\n", (void *)base_addr);
-    //         fprintf(stderr, "  - Calculated Relative Addr for Lookup: 0x%lx\n",
-    //                 relative_addr_to_find);
-    // #endif
+// #ifdef IC_DEBUG
+//         fprintf(stderr, "  - Program Base Addr: %p\n", (void *)base_addr);
+//         fprintf(stderr, "  - Calculated Relative Addr for Lookup: 0x%lx\n",
+//                 relative_addr_to_find);
+// #endif
 
-    //         // --- MODIFIED: 遍历解密后的缓存表 ---
-    //         const protected_func_info *table_start =
-    //                 (const protected_func_info *)decrypted_func_table_cache.data();
-    //         const size_t num_entries =
-    //                 decrypted_func_table_cache.size() / sizeof(protected_func_info);
+//         // --- MODIFIED: 遍历解密后的缓存表 ---
+//         const protected_func_info *table_start =
+//                 (const protected_func_info *)decrypted_func_table_cache.data();
+//         const size_t num_entries =
+//                 decrypted_func_table_cache.size() / sizeof(protected_func_info);
 
-    //         for (size_t i = 0; i < num_entries; ++i)
-    //         {
-    //             const protected_func_info &info = table_start[i];
+//         for (size_t i = 0; i < num_entries; ++i)
+//         {
+//             const protected_func_info &info = table_start[i];
 
-    //             // 检查由 encheck.py 添加的、作为表结尾标记的空条目
-    //             if (info.addr == nullptr && info.size == 0)
-    //             {
-    //                 // 这是表的终止符。如果执行到这里，说明函数未找到。
-    //                 break;
-    //             }
+//             // 检查由 encheck.py 添加的、作为表结尾标记的空条目
+//             if (info.addr == nullptr && info.size == 0)
+//             {
+//                 // 这是表的终止符。如果执行到这里，说明函数未找到。
+//                 break;
+//             }
 
-    //             // --- Compare the calculated relative address with the one from the table
-    //             // ---
-    //             if ((uintptr_t)info.addr == relative_addr_to_find)
-    //             {
-    //                 // 找到了！现在执行哈希校验。
-    // #ifdef IC_DEBUG
-    //                 fprintf(stderr,
-    //                         "  - Found matching entry at index %d. Stored RVA: %p, Size: "
-    //                         "%lu\n",
-    //                         (int)i, info.addr, info.size);
-    // #endif
-    //                 // 计算当前函数的哈希
-    //                 uint8_t calculated_hash[BLAKE3_OUT_LEN];
-    //                 blake3_hasher hasher;
-    //                 blake3_hasher_init(&hasher);
-    //                 // --- Use the real, absolute address for hashing ---
-    //                 blake3_hasher_update(&hasher, real_function_addr, info.size);
-    //                 blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
+//             // --- Compare the calculated relative address with the one from the table
+//             // ---
+//             if ((uintptr_t)info.addr == relative_addr_to_find)
+//             {
+//                 // 找到了！现在执行哈希校验。
+// #ifdef IC_DEBUG
+//                 fprintf(stderr,
+//                         "  - Found matching entry at index %d. Stored RVA: %p, Size: "
+//                         "%lu\n",
+//                         (int)i, info.addr, info.size);
+// #endif
+//                 // 计算当前函数的哈希
+//                 uint8_t calculated_hash[BLAKE3_OUT_LEN];
+//                 blake3_hasher hasher;
+//                 blake3_hasher_init(&hasher);
+//                 // --- Use the real, absolute address for hashing ---
+//                 blake3_hasher_update(&hasher, real_function_addr, info.size);
+//                 blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
 
-    //                 // --- Construct AAD from the info in the table and verify ---
-    //                 uint8_t aad_data[16];  // 8 bytes for addr, 8 bytes for size
-    //                 memcpy(aad_data, &info.addr, 8);
-    //                 memcpy(aad_data + 8, &info.size, 8);
+//                 // --- Construct AAD from the info in the table and verify ---
+//                 uint8_t aad_data[16];  // 8 bytes for addr, 8 bytes for size
+//                 memcpy(aad_data, &info.addr, 8);
+//                 memcpy(aad_data + 8, &info.size, 8);
 
-    //                 if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
-    //                                              BLAKE3_OUT_LEN, aad_data,
-    //                                              sizeof(aad_data)))
-    //                 {
-    // #ifdef IC_DEBUG
-    //                     fprintf(stderr,
-    //                             "[IC-RUNTIME] !! Verification FAILED for function at real "
-    //                             "addr %p.\n",
-    //                             real_function_addr);
-    // #endif
-    //                     secure_terminate();
-    //                 }
-    // #ifdef IC_DEBUG
-    //                 fprintf(stderr,
-    //                         "[IC-RUNTIME] Verification successful for function at real "
-    //                         "addr %p.\n",
-    //                         real_function_addr);
-    // #endif
-    //                 // 校验成功，可以停止搜索并返回
-    //                 return;
-    //             }
-    //         }
+//                 if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
+//                                              BLAKE3_OUT_LEN, aad_data,
+//                                              sizeof(aad_data)))
+//                 {
+// #ifdef IC_DEBUG
+//                     fprintf(stderr,
+//                             "[IC-RUNTIME] !! Verification FAILED for function at real "
+//                             "addr %p.\n",
+//                             real_function_addr);
+// #endif
+//                     secure_terminate();
+//                 }
+// #ifdef IC_DEBUG
+//                 fprintf(stderr,
+//                         "[IC-RUNTIME] Verification successful for function at real "
+//                         "addr %p.\n",
+//                         real_function_addr);
+// #endif
+//                 // 校验成功，可以停止搜索并返回
+//                 return;
+//             }
+//         }
 
-    //         // 如果循环结束仍未找到函数，说明存在严重错误
-    // #ifdef IC_DEBUG
-    //         fprintf(stderr,
-    //                 "[IC-RUNTIME] !! ERROR: Function with relative address 0x%lx not "
-    //                 "found in the protection table.\n",
-    //                 relative_addr_to_find);
-    // #endif
-    //         secure_terminate();  // 函数未在保护表中找到，这是严重错误
-    //     }
+//         // 如果循环结束仍未找到函数，说明存在严重错误
+// #ifdef IC_DEBUG
+//         fprintf(stderr,
+//                 "[IC-RUNTIME] !! ERROR: Function with relative address 0x%lx not "
+//                 "found in the protection table.\n",
+//                 relative_addr_to_find);
+// #endif
+//         secure_terminate();  // 函数未在保护表中找到，这是严重错误
+//     }
 
-    // 动态校验的 C 接口函数
-    // 返回值:
-    //   - 校验成功: 返回 function_addr (原样返回)
-    //   - 校验失败: 返回 function_addr ^ 0xDEADBEEF (或者随机垃圾值)，并触发 secure_terminate
-    //
-    // 设计意图:
-    //   编译器 Pass 会将此返回值参与到后续的计算中:
-    //   Val = Val + (__verify(Addr) - Addr)
-    //   如果校验成功，(Addr - Addr) 为 0，计算不受影响。
-    //   如果校验失败或被 Patch 为返回 0，(0 - Addr) 会导致 Val 变成垃圾数据，导致程序逻辑错误而非直接崩溃。
-    extern "C" uintptr_t NO_IC_INSTRUMENT __verify_memory_integrity(const void *function_addr)
+// 动态校验的 C 接口函数
+// 返回值: 
+//   - 校验成功: 返回 function_addr (原样返回)
+//   - 校验失败: 返回 function_addr ^ 0xDEADBEEF (或者随机垃圾值)，并触发 secure_terminate
+// 
+// 设计意图:
+//   编译器 Pass 会将此返回值参与到后续的计算中:
+//   Val = Val + (__verify(Addr) - Addr)
+//   如果校验成功，(Addr - Addr) 为 0，计算不受影响。
+//   如果校验失败或被 Patch 为返回 0，(0 - Addr) 会导致 Val 变成垃圾数据，导致程序逻辑错误而非直接崩溃。
+extern "C" uintptr_t NO_IC_INSTRUMENT __verify_memory_integrity(const void *function_addr)
+{
+    // 确保函数表已初始化
+    ensure_func_table_initialized();
+
+    const void *real_function_addr = function_addr;
+    
+    // 获取基地址和 RVA
+    uintptr_t base_addr = get_program_base_address();
+    uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
+
+    const protected_func_info *table_start =
+            (const protected_func_info *)decrypted_func_table_cache.data();
+    const size_t num_entries =
+            decrypted_func_table_cache.size() / sizeof(protected_func_info);
+
+    for (size_t i = 0; i < num_entries; ++i)
     {
-        // 确保函数表已初始化
-        ensure_func_table_initialized();
+        const protected_func_info &info = table_start[i];
 
-        const void *real_function_addr = function_addr;
+        if (info.addr == nullptr && info.size == 0) break;
 
-        // 获取基地址和 RVA
-        uintptr_t base_addr = get_program_base_address();
-        uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
-
-        const protected_func_info *table_start =
-                (const protected_func_info *)decrypted_func_table_cache.data();
-        const size_t num_entries =
-                decrypted_func_table_cache.size() / sizeof(protected_func_info);
-
-        for (size_t i = 0; i < num_entries; ++i)
+        if ((uintptr_t)info.addr == relative_addr_to_find)
         {
-            const protected_func_info &info = table_start[i];
+            // 找到条目，计算哈希
+            uint8_t calculated_hash[BLAKE3_OUT_LEN];
+            blake3_hasher hasher;
+            blake3_hasher_init(&hasher);
+            
+            // 计算当前内存中函数的实际哈希
+            blake3_hasher_update(&hasher, real_function_addr, info.size);
+            blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
 
-            if (info.addr == nullptr && info.size == 0) break;
+            // 构造 AAD 并验证
+            uint8_t aad_data[16];
+            memcpy(aad_data, &info.addr, 8);
+            memcpy(aad_data + 8, &info.size, 8);
 
-            if ((uintptr_t)info.addr == relative_addr_to_find)
+            if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
+                                         BLAKE3_OUT_LEN, aad_data,
+                                         sizeof(aad_data)))
             {
-                // 找到条目，计算哈希
-                uint8_t calculated_hash[BLAKE3_OUT_LEN];
-                blake3_hasher hasher;
-                blake3_hasher_init(&hasher);
-
-                // 计算当前内存中函数的实际哈希
-                blake3_hasher_update(&hasher, real_function_addr, info.size);
-                blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
-
-                // 构造 AAD 并验证
-                uint8_t aad_data[16];
-                memcpy(aad_data, &info.addr, 8);
-                memcpy(aad_data + 8, &info.size, 8);
-
-                if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
-                                             BLAKE3_OUT_LEN, aad_data,
-                                             sizeof(aad_data)))
-                {
-                    // 校验失败！
-                    // 1. 触发异步/延迟的崩溃 (增加分析难度)
-                    stack_overflow((uintptr_t)secure_terminate);
-                    secure_terminate();
-
-                    // 2. 返回被污染的地址，破坏数据流
-                    return (uintptr_t)real_function_addr + (uintptr_t)info.addr;
-                }
-
-                // 校验成功，返回原始地址
-                // 数据流依赖: (Ret - Addr) == 0
-                return (uintptr_t)real_function_addr;
+                // 校验失败！
+                // 1. 触发异步/延迟的崩溃 (增加分析难度)
+                stack_overflow((uintptr_t)secure_terminate); 
+                secure_terminate();
+                
+                // 2. 返回被污染的地址，破坏数据流
+                return (uintptr_t)real_function_addr + (uintptr_t)info.addr;
             }
-        }
 
-        // 函数未找到（可能是非法调用或表损坏）
-        secure_terminate();
-        return (uintptr_t)real_function_addr + (uintptr_t)real_function_addr;
+            // 校验成功，返回原始地址
+            // 数据流依赖: (Ret - Addr) == 0
+            return (uintptr_t)real_function_addr;
+        }
     }
+
+    // 函数未找到（可能是非法调用或表损坏）
+    secure_terminate();
+    return (uintptr_t)real_function_addr + (uintptr_t)real_function_addr;
+}

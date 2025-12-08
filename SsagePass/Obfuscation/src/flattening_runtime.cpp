@@ -1,4 +1,5 @@
 #include "flattening_runtime.h"
+#include "crypto_runtime.h"
 #include "blake3.h" 
 #include <cstring>
 

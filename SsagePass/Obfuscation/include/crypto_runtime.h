@@ -8,6 +8,13 @@
 // 定义一个自定义属性宏，用于标记不应被完整性校验插桩的函数。
 // Clang/GCC 的 `annotate` 属性会将一个字符串元数据附加到 LLVM IR 中的函数上，
 // 我们的 Pass 可以读取这个元数据。
+
+#if defined(__clang__) || defined(__GNUC__)
+#define NO_FLA_VER2 __attribute__((annotate("no_fla_ver2")))
+#else
+#define NO_FLA_VER2
+#endif
+
 #if defined(__clang__) || defined(__GNUC__)
 #define NO_IC_INSTRUMENT __attribute__((annotate("no_ic_instrument")))
 #else
@@ -51,6 +58,8 @@ int NO_IC_INSTRUMENT __aead_xchacha20_poly1305_decrypt(
 void NO_IC_INSTRUMENT __verify_self_integrity();
 uintptr_t NO_IC_INSTRUMENT __verify_memory_integrity(const void *function_addr);
 [[noreturn]] void NO_IC_INSTRUMENT __tsx_tamper_handler();
+
+
 
 }
 static uintptr_t NO_IC_INSTRUMENT get_program_base_address() ;

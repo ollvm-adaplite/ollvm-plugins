@@ -167,8 +167,7 @@ llvmGetPassPluginInfo()
                             // --- 修改这里，不再需要解引用 ---
                             // MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,2)));
 
-                            MPM.addPass(llvm::FlatteningEnhancedver2(
-                                    true));
+                        
                                
                            
                         /*     MPM.addPass(llvm::FlatteningEnhanced(
@@ -188,7 +187,8 @@ llvmGetPassPluginInfo()
                             //  MPM.addPass(llvm::StringEncryptionPass(
                             // true));
                              MPM.addPass(llvm::IntegrityCheckPass(true));
-                             
+                                 MPM.addPass(llvm::FlatteningEnhancedver2(
+                                    true));
                             //  MPM.addPass(llvm::IndirectBranchPass(true));
                             // MPM.addPass(llvm::FunctionWrapperPass(true));
                             /*  MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true))); */
@@ -199,5 +199,7 @@ llvmGetPassPluginInfo()
                             /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::TSXProtectPass(true)));
                    */
                         });
+
+                        
             }};
 }

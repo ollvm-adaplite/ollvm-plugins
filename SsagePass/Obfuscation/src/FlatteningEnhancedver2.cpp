@@ -91,37 +91,7 @@ PreservedAnalyses FlatteningEnhancedver2::run(Module &M, ModuleAnalysisManager &
 {
     if (!flag) return PreservedAnalyses::all();
 
-    // 参考 IntegrityCheck.cpp 的逻辑，识别 "no_ic_instrument" 标记
-    std::set<Function *> noFlattenFuncs;
-    if (GlobalVariable *GA = M.getGlobalVariable("llvm.global.annotations"))
-    {
-        if (ConstantArray *CA = dyn_cast<ConstantArray>(GA->getInitializer()))
-        {
-            for (Value *Op : CA->operands())
-            {
-                if (ConstantStruct *CS = dyn_cast<ConstantStruct>(Op))
-                {
-                    if (Function *F = dyn_cast<Function>(CS->getOperand(0)->stripPointerCasts()))
-                    {
-                        if (GlobalVariable *AGL = dyn_cast<GlobalVariable>(CS->getOperand(1)->stripPointerCasts()))
-                        {
-                            if (ConstantDataArray *CDA = dyn_cast<ConstantDataArray>(AGL->getInitializer()))
-                            {
-                                // 如果函数被标记为 no_ic_instrument，则跳过平坦化
-                                if (CDA->getAsString().starts_with("no_ic_instrument"))
-                                {
-                                    noFlattenFuncs.insert(F);
-                                    errs() << "[Flattening] Skipping function (annotation): " << F->getName() << "\n";
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        // 注意：这里我们不删除 GA (GA->eraseFromParent())，
-        // 因为 IntegrityCheck Pass 可能在之后运行，它也需要读取这些注解。
-    }
+
 
     std::set<Function *> preLinkFuncs;
     for (Function &F : M)
@@ -175,11 +145,28 @@ PreservedAnalyses FlatteningEnhancedver2::run(Module &M, ModuleAnalysisManager &
 
     for (Function &F : M)
     {
+       
         if (F.isDeclaration()) continue;
+
         if (runtimeFuncSet.count(&F)) continue;
-        // 检查注解过滤
-        if (noFlattenFuncs.count(&F)) continue;
-        
+              StringRef n = F.getName();
+        if (n.contains("std::") ||             // C++ 标准库
+            n.starts_with("_ZSt") ||            // GNU std:: 符号修饰前缀
+            n.starts_with("_ZNSt") ||           // GNU std:: 符号修饰前缀
+            n.starts_with("__cxx") ||           // C++ 运行时辅助
+            n.starts_with("__clang") ||         // Clang 辅助
+            n.starts_with("llvm.") ||           // LLVM 内置函数
+            n.contains("allocator") ||         // 内存分配器
+            n.contains("vector") ||            // 容器
+            n.contains("basic_string") ||      // 字符串
+            n.contains("_GLOBAL__")  )        // 全局构造/析构
+
+        {
+             // 调试时可以打开这行查看跳过了哪些函数
+             // errs() << "[Flattening] Skipping system/std function: " << n << "\n";
+             continue;
+        }
+
         if (toObfuscate(flag, &F, "fla"))
         {
             funcs.push_back(&F);
