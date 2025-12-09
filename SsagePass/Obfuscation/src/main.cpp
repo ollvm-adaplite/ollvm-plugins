@@ -187,8 +187,8 @@ llvmGetPassPluginInfo()
                             //  MPM.addPass(llvm::StringEncryptionPass(
                             // true));
                              MPM.addPass(llvm::IntegrityCheckPass(true));
-                                 MPM.addPass(llvm::FlatteningEnhancedver2(
-                                    true));
+                          /*        MPM.addPass(llvm::FlatteningEnhancedver2(
+                                    true)); */
                             //  MPM.addPass(llvm::IndirectBranchPass(true));
                             // MPM.addPass(llvm::FunctionWrapperPass(true));
                             /*  MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true))); */

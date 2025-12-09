@@ -30,6 +30,9 @@
   #define FORCE_INLINE inline
 #endif
 
+#define SYSCALL_MAX_CYCLES 25000 
+#define SYSCALL_SUSPICIOUS_THRESHOLD 10000 
+#define SYSCALL_CONFIRMED_THRESHOLD  10000
 // 编译时使用的加密函数
 // Encrypts data and produces a 16-byte authentication tag using
 // XChaCha20-Poly1305.

@@ -30,6 +30,8 @@
 
 #define DEBUG_TYPE "integrity-check"
 
+#define debug
+
 using namespace llvm;
 
 static cl::opt<int> CheckProbability("ic-prob", 
@@ -41,6 +43,9 @@ static cl::opt<int> CheckProbability("ic-prob",
 #else
 #define debugprint(fmt, ...)
 #endif
+
+
+
 
 // ============================================================================
 // Internal MBA Helper Functions
