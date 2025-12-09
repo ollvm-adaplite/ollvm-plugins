@@ -9,12 +9,12 @@
 #include <random>
 #include <vector>
 
-#define debug
+//#define debug
 
 // --- 开启运行时调试 ---
 
 #ifdef debug
-#define IC_DEBUG 1
+//#define IC_DEBUG 1
 
 #endif
 #ifdef IC_DEBUG
@@ -2458,25 +2458,25 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
 
 #else  // Linux (ELF) 平台的实现
 
-// 新增：用于获取程序基地址的回调函数
-static int NO_IC_INSTRUMENT base_addr_callback(struct dl_phdr_info *info,
-                                               size_t size, void *data)
-{
-    // 回调的第一个对象就是主程序本身。我们捕获它的基地址并停止迭代。
-    *(uintptr_t *)data = info->dlpi_addr;
-    return 1;  // 返回非零值以停止迭代
-}
+// 用于获取程序基地址的回调函数
+// static int NO_IC_INSTRUMENT base_addr_callback(struct dl_phdr_info *info,
+//                                                size_t size, void *data)
+// {
+//     // 回调的第一个对象就是主程序本身。我们捕获它的基地址并停止迭代。
+//     *(uintptr_t *)data = info->dlpi_addr;
+//     return 1;  // 返回非零值以停止迭代
+// }
 
-static uintptr_t NO_IC_INSTRUMENT test_get_program_base_address()
-{
-    // 使用静态变量缓存基地址，避免重复计算
-    static uintptr_t base_addr = 0;
-    if (base_addr == 0)
-    {
-        dl_iterate_phdr(base_addr_callback, &base_addr);
-    }
-    return base_addr;
-}
+// static uintptr_t NO_IC_INSTRUMENT test_get_program_base_address()
+// {
+//     // 使用静态变量缓存基地址，避免重复计算
+//     static uintptr_t base_addr = 0;
+//     if (base_addr == 0)
+//     {
+//         dl_iterate_phdr(base_addr_callback, &base_addr);
+//     }
+//     return base_addr;
+// }
 
 /**
  * @brief Get the program base address object
@@ -2491,12 +2491,7 @@ static uintptr_t NO_IC_INSTRUMENT get_program_base_address()
         {
             parse_self_maps();
         }
-    std::cout << "[IC-RUNTIME] Verified base address: 0x"
-              << std::hex << g_verified_base_addr << std::dec << "\n";
-    std::cout << "[IC-RUNTIME] test base address: 0x"
-              << std::hex << test_get_program_base_address() << std::dec << "\n";
-    std::cout << "[IC-RUNTIME] is correct: "
-              << (g_verified_base_addr == test_get_program_base_address() ? "YES" : "NO") << "\n";
+
     return g_verified_base_addr;
 }
 
