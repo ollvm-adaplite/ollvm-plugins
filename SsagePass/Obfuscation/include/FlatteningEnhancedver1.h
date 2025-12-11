@@ -1,5 +1,5 @@
-#ifndef _FLATTENINGENHANCED_H_
-#define _FLATTENINGENHANCED_H_
+#ifndef _FlatteningEnhancedver1_H_
+#define _FlatteningEnhancedver1_H_
 
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
@@ -17,11 +17,11 @@ using namespace std;
 using namespace llvm;
 
 namespace llvm{ // 平坦化控制流增强版
-    class FlatteningEnhanced : public PassInfoMixin<FlatteningEnhanced>{
+    class FlatteningEnhancedver1 : public PassInfoMixin<FlatteningEnhancedver1>{
         public:
             bool flag;
             bool initialized;
-            FlatteningEnhanced(bool flag){
+            FlatteningEnhancedver1(bool flag){
                 this->flag = flag;
             } // 携带flag的构造函数
             PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM); // Pass实现函数
@@ -31,10 +31,10 @@ namespace llvm{ // 平坦化控制流增强版
             std::vector<BasicBlock *> *getBlocks(Function *function, std::vector<BasicBlock *> *lists);
             Function *buildUpdateKeyFunc(Module *m);
             unsigned int getUniqueNumber(std::vector<unsigned int> *rand_list);
-            void DoFlatteningEnhanced(Function *f, int seed, Function *updateFunc);
+            void DoFlatteningEnhancedver1(Function *f, int seed, Function *updateFunc);
     };
 
-    FlatteningEnhanced *createFlatteningEnhanced(bool flag); // 平坦化控制流增强版
+    FlatteningEnhancedver1 *createFlatteningEnhancedver1(bool flag); // 平坦化控制流增强版
     
 }
 #endif

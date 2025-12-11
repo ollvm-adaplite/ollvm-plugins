@@ -1,6 +1,7 @@
 #include "Flattening.h"
 #include "FlatteningEnhanced.h"  // 包含 FlatteningEnhanced 类的声明
 #include "FlatteningEnhancedver2.h"
+#include "FlatteningEnhancedver1.h"
 #include "FunctionWrapper.h"
 #include "IndirectBranch.h"
 #include "IndirectCall.h"
@@ -167,12 +168,6 @@ llvmGetPassPluginInfo()
                             // --- 修改这里，不再需要解引用 ---
                             // MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,2)));
 
-                        
-                               
-                           
-                        /*     MPM.addPass(llvm::FlatteningEnhanced(
-                                    true));
- */
                             /*            llvm::FunctionPassManager FPM;
                    FPM.addPass(llvm::createFunctionWrapperwithoutptr(true)); */
 
@@ -186,9 +181,12 @@ llvmGetPassPluginInfo()
                             //            MPM.addPass(createModuleToFunctionPassAdaptor(llvm::IndirectCallPass(true)));
                             //  MPM.addPass(llvm::StringEncryptionPass(
                             // true));
-                             MPM.addPass(llvm::IntegrityCheckPass(true));
-                                 MPM.addPass(llvm::FlatteningEnhancedver2(
+                            MPM.addPass(llvm::IntegrityCheckPass(true));
+                           /*  MPM.addPass(llvm::FlatteningEnhanced(
+                                    true)); */
+                            MPM.addPass(llvm::FlatteningEnhancedver2(
                                     true));
+
                             //  MPM.addPass(llvm::IndirectBranchPass(true));
                             // MPM.addPass(llvm::FunctionWrapperPass(true));
                             /*  MPM.addPass(createModuleToFunctionPassAdaptor(llvm::BogusControlFlowPass(true))); */
@@ -199,7 +197,5 @@ llvmGetPassPluginInfo()
                             /* MPM.addPass(createModuleToFunctionPassAdaptor(llvm::TSXProtectPass(true)));
                    */
                         });
-
-                        
             }};
 }

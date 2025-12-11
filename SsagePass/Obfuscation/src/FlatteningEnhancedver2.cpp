@@ -1,3 +1,13 @@
+/**
+ * @file FlatteningEnhancedver2.cpp
+ * @brief 
+ * @author Lux-QAQ
+ * @version 1.0.1
+ * @date 2025-12-09
+ * 
+ * @copyright Copyright (c) 2025  Lux-QAQ
+ * 
+*/
 #include "FlatteningEnhancedver2.h"
 #include <llvm-21/llvm/IR/InlineAsm.h>
 #include "Utils.h"
@@ -91,8 +101,6 @@ PreservedAnalyses FlatteningEnhancedver2::run(Module &M, ModuleAnalysisManager &
 {
     if (!flag) return PreservedAnalyses::all();
 
-
-
     std::set<Function *> preLinkFuncs;
     for (Function &F : M)
     {
@@ -145,26 +153,25 @@ PreservedAnalyses FlatteningEnhancedver2::run(Module &M, ModuleAnalysisManager &
 
     for (Function &F : M)
     {
-       
         if (F.isDeclaration()) continue;
 
         if (runtimeFuncSet.count(&F)) continue;
-              StringRef n = F.getName();
-        if (n.contains("std::") ||             // C++ 标准库
-            n.starts_with("_ZSt") ||            // GNU std:: 符号修饰前缀
-            n.starts_with("_ZNSt") ||           // GNU std:: 符号修饰前缀
-            n.starts_with("__cxx") ||           // C++ 运行时辅助
-            n.starts_with("__clang") ||         // Clang 辅助
-            n.starts_with("llvm.") ||           // LLVM 内置函数
-            n.contains("allocator") ||         // 内存分配器
-            n.contains("vector") ||            // 容器
-            n.contains("basic_string") ||      // 字符串
-            n.contains("_GLOBAL__")  )        // 全局构造/析构
+        StringRef n = F.getName();
+        if (n.contains("std::") ||         // C++ 标准库
+            n.starts_with("_ZSt") ||       // GNU std:: 符号修饰前缀
+            n.starts_with("_ZNSt") ||      // GNU std:: 符号修饰前缀
+            n.starts_with("__cxx") ||      // C++ 运行时辅助
+            n.starts_with("__clang") ||    // Clang 辅助
+            n.starts_with("llvm.") ||      // LLVM 内置函数
+            n.contains("allocator") ||     // 内存分配器
+            n.contains("vector") ||        // 容器
+            n.contains("basic_string") ||  // 字符串
+            n.contains("_GLOBAL__"))       // 全局构造/析构
 
         {
-             // 调试时可以打开这行查看跳过了哪些函数
-             // errs() << "[Flattening] Skipping system/std function: " << n << "\n";
-             continue;
+            // 调试时可以打开这行查看跳过了哪些函数
+            // errs() << "[Flattening] Skipping system/std function: " << n << "\n";
+            continue;
         }
 
         if (toObfuscate(flag, &F, "fla"))
@@ -281,6 +288,7 @@ void FlatteningEnhancedver2::encryptConstants(BasicBlock *BB, Value *flowKeyVar,
 
 void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Function *funcCollatz, Function *funcMixKey, Module &M)
 {
+    // 1. 处理 PHI 节点
     std::vector<PHINode *> tmpPhi;
     for (BasicBlock &BB : F)
     {
@@ -297,6 +305,7 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
         DemotePHIToStack(phi, F.getEntryBlock().getTerminator()->getIterator());
     }
 
+    // 2. 收集原始基本块
     std::vector<BasicBlock *> origBlocks;
     for (BasicBlock &BB : F)
     {
@@ -308,6 +317,7 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
     BasicBlock *entryBlock = origBlocks[0];
     origBlocks.erase(origBlocks.begin());
 
+    // 确保 Entry Block 只有一条跳转指令指向第一个真实块
     if (entryBlock->getTerminator()->getNumSuccessors() > 1)
     {
         BasicBlock *newBlock = entryBlock->splitBasicBlock(entryBlock->getTerminator(), "entry_split");
@@ -317,6 +327,7 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
     LLVMContext &Ctx = F.getContext();
     IRBuilder<> builder(Ctx);
 
+    // 3. 初始化调度变量
     builder.SetInsertPoint(entryBlock->getTerminator());
     AllocaInst *stateVar = builder.CreateAlloca(Type::getInt64Ty(Ctx), nullptr, "stateVar");
     AllocaInst *flowKeyVar = builder.CreateAlloca(Type::getInt64Ty(Ctx), nullptr, "flowKeyVar");
@@ -326,6 +337,7 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
     builder.CreateStore(ConstantInt::get(Type::getInt64Ty(Ctx), initState), stateVar);
     builder.CreateStore(ConstantInt::get(Type::getInt64Ty(Ctx), initKey), flowKeyVar);
 
+    // 4. 分配 BlockInfo
     std::map<BasicBlock *, BlockInfo> blockInfos;
     BasicBlock *firstRealBlock = origBlocks[0];
     blockInfos[firstRealBlock] = {initState, initKey, 0};
@@ -336,6 +348,20 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
         blockInfos[BB] = {getRand64(), getRand64(), 0};
     }
 
+    // [NEW] 预生成垃圾块信息，用于构建虚假分支
+    int junkBlockCount = getRand64() % 20 + 8;
+    struct JunkInfo
+    {
+        uint64_t state;
+        uint64_t key;
+    };
+    std::vector<JunkInfo> junkInfos;
+    for (int i = 0; i < junkBlockCount; ++i)
+    {
+        junkInfos.push_back({getRand64(), getRand64()});
+    }
+
+    // 5. 创建调度循环结构
     BasicBlock *loopHead = BasicBlock::Create(Ctx, "loopHead", &F);
     BasicBlock *loopDefault = BasicBlock::Create(Ctx, "loopDefault", &F);
     BasicBlock *loopEnd = BasicBlock::Create(Ctx, "loopEnd", &F);
@@ -344,20 +370,74 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
     builder.SetInsertPoint(entryBlock);
     builder.CreateBr(loopHead);
 
+    // [Helper] 创建不透明谓词 (Always False)
+    // (x | y) - (x + y) + (x & y) == 0
+    auto createOpaqueFalse = [&](Value *x, Value *y) -> Value *
+    {
+        Value *Or = builder.CreateOr(x, y);
+        Value *Add = builder.CreateAdd(x, y);
+        Value *And = builder.CreateAnd(x, y);
+        Value *Sub = builder.CreateSub(Or, Add);
+        Value *Res = builder.CreateAdd(Sub, And);
+        return builder.CreateICmpNE(Res, ConstantInt::get(Type::getInt64Ty(Ctx), 0));
+    };
+
+    // [Helper] 注入虚假分支
+    auto injectFakeBranch = [&](Value *realState, Value *realKey, Value *ctxState, Value *ctxKey) -> std::pair<Value *, Value *>
+    {
+        Value *OpFalse = createOpaqueFalse(ctxState, ctxKey);
+        JunkInfo &fakeTarget = junkInfos[getRand64() % junkInfos.size()];
+        Value *FakeState = ConstantInt::get(Type::getInt64Ty(Ctx), fakeTarget.state);
+        Value *FakeKey = ConstantInt::get(Type::getInt64Ty(Ctx), fakeTarget.key);
+        Value *SelState = builder.CreateSelect(OpFalse, FakeState, realState);
+        Value *SelKey = builder.CreateSelect(OpFalse, FakeKey, realKey);
+        return {SelState, SelKey};
+    };
+
+    // [Helper] 计算并更新下一个状态 (包含 Collatz, MixKey 和 虚假分支)
+    auto updateStateAndJump = [&](BasicBlock *currBB, BasicBlock *targetBB, Value *loadState, Value *loadKey)
+    {
+        BlockInfo &targetInfo = blockInfos[targetBB];
+        BlockInfo &currInfo = blockInfos[currBB];
+
+        uint64_t disc = getRand64();
+        uint64_t simulatedNextState = (currInfo.stateID % 2 == 0 ? currInfo.stateID / 2 : 3 * currInfo.stateID + 1) ^ disc;
+        uint64_t stateCorr = simulatedNextState ^ targetInfo.stateID;
+
+        uint64_t rotatedKey = (currInfo.flowKeyIn << 13) | (currInfo.flowKeyIn >> (64 - 13));
+        uint64_t keyCorr = rotatedKey ^ targetInfo.flowKeyIn;
+
+        uint64_t encStateCorr = stateCorr ^ currInfo.flowKeyIn;
+        uint64_t encKeyCorr = keyCorr ^ currInfo.flowKeyIn;
+
+        Value *nextStateBase = builder.CreateCall(funcCollatz, {loadState, ConstantInt::get(Type::getInt64Ty(Ctx), disc)});
+        Value *decStateCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encStateCorr), loadKey);
+        Value *decKeyCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encKeyCorr), loadKey);
+
+        Value *nextState = builder.CreateXor(nextStateBase, decStateCorr);
+        Value *nextKey = builder.CreateCall(funcMixKey, {loadKey, decKeyCorr});
+
+        // 注入虚假分支
+        auto [finalState, finalKey] = injectFakeBranch(nextState, nextKey, loadState, loadKey);
+
+        builder.CreateStore(finalState, stateVar);
+        builder.CreateStore(finalKey, flowKeyVar);
+        builder.CreateBr(loopHead);
+    };
+
+    // 6. 处理每个原始块
     for (BasicBlock *BB : origBlocks)
     {
         BB->moveBefore(loopEnd);
 
+        // 加密常量
         encryptConstants(BB, flowKeyVar, blockInfos[BB].flowKeyIn);
 
-        // 异常处理修复：在 LandingPad 块开头重置 Key 和 State
+        // LandingPad 特殊处理
         if (BB->isLandingPad())
         {
-            // 使用 getLandingPadInst() 替代 getFirstNonPHI()，更加安全规范
             if (LandingPadInst *LPI = BB->getLandingPadInst())
             {
-                // 在 LandingPad 指令之后插入，因为 LandingPad 必须是块的第一条非 PHI 指令
-                // LPI->getNextNode() 获取下一条指令作为插入点
                 IRBuilder<> lpBuilder(LPI->getNextNode());
                 BlockInfo &info = blockInfos[BB];
                 lpBuilder.CreateStore(ConstantInt::get(Type::getInt64Ty(Ctx), info.stateID), stateVar);
@@ -370,159 +450,105 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
         Value *loadState = builder.CreateLoad(Type::getInt64Ty(Ctx), stateVar);
         Value *loadKey = builder.CreateLoad(Type::getInt64Ty(Ctx), flowKeyVar);
 
-        if (term->getNumSuccessors() == 0)
+        // --- 处理各种 Terminator ---
+
+        if (isa<ReturnInst>(term) || isa<ResumeInst>(term))
         {
+            // 不需要做任何事，直接返回或抛出
             continue;
         }
         else if (term->getNumSuccessors() == 1)
         {
+            // 无条件跳转
             BasicBlock *target = term->getSuccessor(0);
-            BlockInfo &targetInfo = blockInfos[target];
-
-            uint64_t disc = getRand64();
-            uint64_t simulatedNextState = (blockInfos[BB].stateID % 2 == 0 ? blockInfos[BB].stateID / 2 : 3 * blockInfos[BB].stateID + 1) ^ disc;
-            uint64_t stateCorr = simulatedNextState ^ targetInfo.stateID;
-
-            uint64_t rotatedKey = (blockInfos[BB].flowKeyIn << 13) | (blockInfos[BB].flowKeyIn >> (64 - 13));
-            uint64_t keyCorr = rotatedKey ^ targetInfo.flowKeyIn;
-
-            uint64_t encStateCorr = stateCorr ^ blockInfos[BB].flowKeyIn;
-            uint64_t encKeyCorr = keyCorr ^ blockInfos[BB].flowKeyIn;
-
-            Value *nextStateBase = builder.CreateCall(funcCollatz, {loadState, ConstantInt::get(Type::getInt64Ty(Ctx), disc)});
-            Value *decStateCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encStateCorr), loadKey);
-            Value *decKeyCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encKeyCorr), loadKey);
-
-            Value *nextState = builder.CreateXor(nextStateBase, decStateCorr);
-            Value *nextKey = builder.CreateCall(funcMixKey, {loadKey, decKeyCorr});
-
-            builder.CreateStore(nextState, stateVar);
-            builder.CreateStore(nextKey, flowKeyVar);
-            builder.CreateBr(loopHead);
-
+            updateStateAndJump(BB, target, loadState, loadKey);
             term->eraseFromParent();
         }
-        else if (term->getNumSuccessors() == 2)
+        else if (BranchInst *br = dyn_cast<BranchInst>(term))
         {
-            if (BranchInst *br = dyn_cast<BranchInst>(term))
+            // 条件跳转 (Successors == 2)
+            if (br->isConditional())
             {
                 Value *cond = br->getCondition();
                 BasicBlock *trueBB = br->getSuccessor(0);
                 BasicBlock *falseBB = br->getSuccessor(1);
 
-                uint64_t discTrue = getRand64();
-                uint64_t simStateTrue = (blockInfos[BB].stateID % 2 == 0 ? blockInfos[BB].stateID / 2 : 3 * blockInfos[BB].stateID + 1) ^ discTrue;
-                uint64_t stateCorrTrue = simStateTrue ^ blockInfos[trueBB].stateID;
+                // 计算 True 分支的 Next State/Key
+                // 这里我们需要手动展开 updateStateAndJump 的逻辑，因为需要 Select
+                // 为了代码复用，我们可以把计算逻辑提取出来，但这里直接写可能更清晰
 
-                uint64_t rotKey = (blockInfos[BB].flowKeyIn << 13) | (blockInfos[BB].flowKeyIn >> (64 - 13));
-                uint64_t keyCorrTrue = rotKey ^ blockInfos[trueBB].flowKeyIn;
+                auto calcNext = [&](BasicBlock *target) -> std::pair<Value *, Value *>
+                {
+                    BlockInfo &targetInfo = blockInfos[target];
+                    BlockInfo &currInfo = blockInfos[BB];
+                    uint64_t disc = getRand64();
+                    uint64_t simState = (currInfo.stateID % 2 == 0 ? currInfo.stateID / 2 : 3 * currInfo.stateID + 1) ^ disc;
+                    uint64_t stateCorr = simState ^ targetInfo.stateID;
+                    uint64_t rotKey = (currInfo.flowKeyIn << 13) | (currInfo.flowKeyIn >> (64 - 13));
+                    uint64_t keyCorr = rotKey ^ targetInfo.flowKeyIn;
+                    uint64_t encStateCorr = stateCorr ^ currInfo.flowKeyIn;
+                    uint64_t encKeyCorr = keyCorr ^ currInfo.flowKeyIn;
 
-                uint64_t discFalse = getRand64();
-                uint64_t simStateFalse = (blockInfos[BB].stateID % 2 == 0 ? blockInfos[BB].stateID / 2 : 3 * blockInfos[BB].stateID + 1) ^ discFalse;
-                uint64_t stateCorrFalse = simStateFalse ^ blockInfos[falseBB].stateID;
-                uint64_t keyCorrFalse = rotKey ^ blockInfos[falseBB].flowKeyIn;
+                    Value *nsBase = builder.CreateCall(funcCollatz, {loadState, ConstantInt::get(Type::getInt64Ty(Ctx), disc)});
+                    Value *dsCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encStateCorr), loadKey);
+                    Value *dkCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encKeyCorr), loadKey);
+                    Value *ns = builder.CreateXor(nsBase, dsCorr);
+                    Value *nk = builder.CreateCall(funcMixKey, {loadKey, dkCorr});
+                    return {ns, nk};
+                };
 
-                uint64_t encStateCorrTrue = stateCorrTrue ^ blockInfos[BB].flowKeyIn;
-                uint64_t encStateCorrFalse = stateCorrFalse ^ blockInfos[BB].flowKeyIn;
-                uint64_t encKeyCorrTrue = keyCorrTrue ^ blockInfos[BB].flowKeyIn;
-                uint64_t encKeyCorrFalse = keyCorrFalse ^ blockInfos[BB].flowKeyIn;
+                auto [nsTrue, nkTrue] = calcNext(trueBB);
+                auto [nsFalse, nkFalse] = calcNext(falseBB);
 
-                Value *selDisc = builder.CreateSelect(cond, ConstantInt::get(Type::getInt64Ty(Ctx), discTrue), ConstantInt::get(Type::getInt64Ty(Ctx), discFalse));
-                Value *selEncStateCorr = builder.CreateSelect(cond, ConstantInt::get(Type::getInt64Ty(Ctx), encStateCorrTrue), ConstantInt::get(Type::getInt64Ty(Ctx), encStateCorrFalse));
-                Value *selEncKeyCorr = builder.CreateSelect(cond, ConstantInt::get(Type::getInt64Ty(Ctx), encKeyCorrTrue), ConstantInt::get(Type::getInt64Ty(Ctx), encKeyCorrFalse));
+                Value *nextState = builder.CreateSelect(cond, nsTrue, nsFalse);
+                Value *nextKey = builder.CreateSelect(cond, nkTrue, nkFalse);
 
-                Value *nextStateBase = builder.CreateCall(funcCollatz, {loadState, selDisc});
-                Value *decStateCorr = builder.CreateXor(selEncStateCorr, loadKey);
-                Value *decKeyCorr = builder.CreateXor(selEncKeyCorr, loadKey);
+                auto [finalState, finalKey] = injectFakeBranch(nextState, nextKey, loadState, loadKey);
 
-                Value *nextState = builder.CreateXor(nextStateBase, decStateCorr);
-                Value *nextKey = builder.CreateCall(funcMixKey, {loadKey, decKeyCorr});
-
-                builder.CreateStore(nextState, stateVar);
-                builder.CreateStore(nextKey, flowKeyVar);
+                builder.CreateStore(finalState, stateVar);
+                builder.CreateStore(finalKey, flowKeyVar);
                 builder.CreateBr(loopHead);
-
                 term->eraseFromParent();
             }
-            else if (InvokeInst *invoke = dyn_cast<InvokeInst>(term))
+        }
+        else if (SwitchInst *sw = dyn_cast<SwitchInst>(term))
+        {
+            // Switch 跳转：使用 Trampoline 块
+            for (unsigned i = 0; i < sw->getNumSuccessors(); ++i)
             {
-                BasicBlock *normalBB = invoke->getNormalDest();
-                BasicBlock *trampoline = BasicBlock::Create(Ctx, "invoke_trampoline", &F);
+                BasicBlock *dst = sw->getSuccessor(i);
+                BasicBlock *trampoline = BasicBlock::Create(Ctx, "sw_trampoline", &F);
                 trampoline->moveBefore(loopEnd);
-                invoke->setNormalDest(trampoline);
 
                 builder.SetInsertPoint(trampoline);
-                BlockInfo &targetInfo = blockInfos[normalBB];
+                updateStateAndJump(BB, dst, loadState, loadKey);
 
-                uint64_t disc = getRand64();
-                uint64_t simulatedNextState = (blockInfos[BB].stateID % 2 == 0 ? blockInfos[BB].stateID / 2 : 3 * blockInfos[BB].stateID + 1) ^ disc;
-                uint64_t stateCorr = simulatedNextState ^ targetInfo.stateID;
-
-                uint64_t rotatedKey = (blockInfos[BB].flowKeyIn << 13) | (blockInfos[BB].flowKeyIn >> (64 - 13));
-                uint64_t keyCorr = rotatedKey ^ targetInfo.flowKeyIn;
-
-                uint64_t encStateCorr = stateCorr ^ blockInfos[BB].flowKeyIn;
-                uint64_t encKeyCorr = keyCorr ^ blockInfos[BB].flowKeyIn;
-
-                Value *nextStateBase = builder.CreateCall(funcCollatz, {loadState, ConstantInt::get(Type::getInt64Ty(Ctx), disc)});
-                Value *decStateCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encStateCorr), loadKey);
-                Value *decKeyCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encKeyCorr), loadKey);
-
-                Value *nextState = builder.CreateXor(nextStateBase, decStateCorr);
-                Value *nextKey = builder.CreateCall(funcMixKey, {loadKey, decKeyCorr});
-
-                builder.CreateStore(nextState, stateVar);
-                builder.CreateStore(nextKey, flowKeyVar);
-                builder.CreateBr(loopHead);
+                sw->setSuccessor(i, trampoline);
             }
         }
-        else
+        else if (InvokeInst *invoke = dyn_cast<InvokeInst>(term))
         {
-            if (SwitchInst *sw = dyn_cast<SwitchInst>(term))
-            {
-                for (unsigned i = 0; i < sw->getNumSuccessors(); ++i)
-                {
-                    BasicBlock *dst = sw->getSuccessor(i);
-                    BasicBlock *trampoline = BasicBlock::Create(Ctx, "sw_trampoline", &F);
-                    trampoline->moveBefore(loopEnd);
+            // Invoke 跳转：处理 NormalDest，保留 UnwindDest
+            BasicBlock *normalDest = invoke->getNormalDest();
+            BasicBlock *trampoline = BasicBlock::Create(Ctx, "invoke_trampoline", &F);
+            trampoline->moveBefore(loopEnd);
 
-                    builder.SetInsertPoint(trampoline);
-                    BlockInfo &targetInfo = blockInfos[dst];
+            builder.SetInsertPoint(trampoline);
+            updateStateAndJump(BB, normalDest, loadState, loadKey);
 
-                    uint64_t disc = getRand64();
-                    uint64_t simulatedNextState = (blockInfos[BB].stateID % 2 == 0 ? blockInfos[BB].stateID / 2 : 3 * blockInfos[BB].stateID + 1) ^ disc;
-                    uint64_t stateCorr = simulatedNextState ^ targetInfo.stateID;
-
-                    uint64_t rotatedKey = (blockInfos[BB].flowKeyIn << 13) | (blockInfos[BB].flowKeyIn >> (64 - 13));
-                    uint64_t keyCorr = rotatedKey ^ targetInfo.flowKeyIn;
-
-                    uint64_t encStateCorr = stateCorr ^ blockInfos[BB].flowKeyIn;
-                    uint64_t encKeyCorr = keyCorr ^ blockInfos[BB].flowKeyIn;
-
-                    Value *nextStateBase = builder.CreateCall(funcCollatz, {loadState, ConstantInt::get(Type::getInt64Ty(Ctx), disc)});
-                    Value *decStateCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encStateCorr), loadKey);
-                    Value *decKeyCorr = builder.CreateXor(ConstantInt::get(Type::getInt64Ty(Ctx), encKeyCorr), loadKey);
-
-                    Value *nextState = builder.CreateXor(nextStateBase, decStateCorr);
-                    Value *nextKey = builder.CreateCall(funcMixKey, {loadKey, decKeyCorr});
-
-                    builder.CreateStore(nextState, stateVar);
-                    builder.CreateStore(nextKey, flowKeyVar);
-                    builder.CreateBr(loopHead);
-
-                    sw->setSuccessor(i, trampoline);
-                }
-            }
+            invoke->setNormalDest(trampoline);
+            // UnwindDest 保持不变，指向 LandingPad (它也是 Switch 的一个 Case)
         }
     }
 
+    // 7. 构建 Switch 调度器
     builder.SetInsertPoint(loopHead);
     Value *currState = builder.CreateLoad(Type::getInt64Ty(Ctx), stateVar);
     Value *currKey = builder.CreateLoad(Type::getInt64Ty(Ctx), flowKeyVar);
 
     Value *hashVal = builder.CreateCall(funcHash, {currState, currKey});
 
-    SwitchInst *sw = builder.CreateSwitch(hashVal, loopDefault, origBlocks.size());
+    SwitchInst *sw = builder.CreateSwitch(hashVal, loopDefault, origBlocks.size() + junkBlockCount);
 
     for (BasicBlock *BB : origBlocks)
     {
@@ -531,93 +557,98 @@ void FlatteningEnhancedver2::doFlattening(Function &F, Function *funcHash, Funct
         sw->addCase(ConstantInt::get(Type::getInt64Ty(Ctx), targetHash), BB);
     }
 
-    int junkBlockCount = getRand64() % 20 + 8;
+    // 8. 生成并连接垃圾块
     std::vector<BasicBlock *> junkBlocks;
 
     for (int i = 0; i < junkBlockCount; ++i)
     {
         BasicBlock *srcBB = origBlocks[getRand64() % origBlocks.size()];
-
         ValueToValueMapTy VMap;
         BasicBlock *junkBB = CloneBasicBlock(srcBB, VMap, "junk", &F);
         junkBB->moveBefore(loopEnd);
 
+        // 修复指令引用
         for (Instruction &I : *junkBB)
         {
             RemapInstruction(&I, VMap, RF_IgnoreMissingLocals | RF_NoModuleLevelChanges);
         }
 
+        // 随机变异
         for (auto I = junkBB->rbegin(); I != junkBB->rend();)
         {
             Instruction *Inst = &(*I);
             ++I;
-
             if (Inst->isTerminator())
             {
                 Inst->eraseFromParent();
                 continue;
             }
 
-            if (getRand64() % 2 == 0)
+            if (getRand64() % 3 == 0 && !Inst->getType()->isVoidTy())
             {
-                if (!Inst->getType()->isVoidTy())
-                {
-                    Inst->replaceAllUsesWith(UndefValue::get(Inst->getType()));
-                }
+                Inst->replaceAllUsesWith(UndefValue::get(Inst->getType()));
                 Inst->eraseFromParent();
             }
-            else
+            else if (auto *BO = dyn_cast<BinaryOperator>(Inst))
             {
-                if (auto *BO = dyn_cast<BinaryOperator>(Inst))
-                {
-                    BO->swapOperands();
-                }
+                BO->swapOperands();
             }
         }
 
         builder.SetInsertPoint(junkBB);
 
+        // [Debug Trap] 必须保留
 #ifdef debug
         FunctionType *VoidTy = FunctionType::get(Type::getVoidTy(Ctx), false);
         InlineAsm *Trap = InlineAsm::get(VoidTy, "int3", "", true);
         builder.CreateCall(Trap);
 #endif
 
+        // [NEW] 垃圾块互连：计算跳转到另一个垃圾块或真实块
+        // 80% 概率跳向另一个垃圾块，20% 概率跳向真实块
+        uint64_t nextStateID, nextKeyIn;
+        if (getRand64() % 10 < 5)
+        {
+            JunkInfo &target = junkInfos[getRand64() % junkInfos.size()];
+            nextStateID = target.state;
+            nextKeyIn = target.key;
+        }
+        else
+        {
+            BasicBlock *targetBB = origBlocks[getRand64() % origBlocks.size()];
+            nextStateID = blockInfos[targetBB].stateID;
+            nextKeyIn = blockInfos[targetBB].flowKeyIn;
+        }
+
+        // 简单的混淆赋值，模拟计算
         Value *curState = builder.CreateLoad(Type::getInt64Ty(Ctx), stateVar);
-        Value *curKey = builder.CreateLoad(Type::getInt64Ty(Ctx), flowKeyVar);
+        Value *Zero = builder.CreateXor(curState, curState);
+        Value *NextStateVal = ConstantInt::get(Type::getInt64Ty(Ctx), nextStateID);
+        Value *ObfState = builder.CreateXor(NextStateVal, Zero);  // State = Target ^ 0
 
-        uint64_t randDisc = getRand64();
-        uint64_t randMod = getRand64();
-
-        Value *nextState = builder.CreateCall(funcCollatz, {curState, ConstantInt::get(Type::getInt64Ty(Ctx), randDisc)});
-        Value *nextKey = builder.CreateCall(funcMixKey, {curKey, ConstantInt::get(Type::getInt64Ty(Ctx), randMod)});
-
-        builder.CreateStore(nextState, stateVar);
-        builder.CreateStore(nextKey, flowKeyVar);
+        builder.CreateStore(ObfState, stateVar);
+        builder.CreateStore(ConstantInt::get(Type::getInt64Ty(Ctx), nextKeyIn), flowKeyVar);
         builder.CreateBr(loopHead);
 
         junkBlocks.push_back(junkBB);
     }
 
-    for (BasicBlock *junkBB : junkBlocks)
+    // 将垃圾块加入 Switch
+    for (int i = 0; i < junkBlockCount; ++i)
     {
-        uint64_t randomHash = getRand64();
-        sw->addCase(ConstantInt::get(Type::getInt64Ty(Ctx), randomHash), junkBB);
+        uint64_t hash = calculateCompileTimeHash(junkInfos[i].state, junkInfos[i].key);
+        sw->addCase(ConstantInt::get(Type::getInt64Ty(Ctx), hash), junkBlocks[i]);
     }
 
+    // 9. 处理 Default 块
     builder.SetInsertPoint(loopDefault);
     Value *junkState = builder.CreateLoad(Type::getInt64Ty(Ctx), stateVar);
-
     uint64_t randomDiscriminator = getRand64();
     Value *junkNext = builder.CreateCall(funcCollatz, {junkState, ConstantInt::get(Type::getInt64Ty(Ctx), randomDiscriminator)});
-
     builder.CreateStore(junkNext, stateVar);
     builder.CreateBr(loopHead);
 
-    if (loopEnd->empty())
-    {
-        loopEnd->eraseFromParent();
-    }
+    if (loopEnd->empty()) loopEnd->eraseFromParent();
 
     errs() << "  Flattening complete for " << F.getName() << "\n";
 }

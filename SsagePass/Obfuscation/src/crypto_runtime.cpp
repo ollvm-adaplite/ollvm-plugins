@@ -1,3 +1,14 @@
+/**
+ * @file crypto_runtime.cpp
+ * @brief 
+ * @author Lux-QAQ
+ * @version 1.0.1
+ * @date 2025-12-09
+ * 
+ * @copyright Copyright (c) 2025  Lux-QAQ
+ * 
+*/
+
 #include "crypto_runtime.h"
 #include "blake3.h"
 
