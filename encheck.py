@@ -281,6 +281,16 @@ def main(executable_path, debug=False):
 
     print(f"\n--- Phase 3: Processing modified executable ---")
     
+    key_offset = None
+    hash_offset = None
+    table_offset = None
+    table_size = 0
+    text_hash = b''
+    text_section_aad = b''
+    
+    # [FIX] 预先加载段信息，供后续使用，避免重复解析 ELF
+    load_segments = []
+
     if is_pe:
         try:
             pe = pefile.PE(executable_path)
@@ -348,20 +358,6 @@ def main(executable_path, debug=False):
         if not table_sec: table_sec = sections_map.get(WIN_FUNC_TABLE_SEC)
         table_size = table_sec.SizeOfRawData if table_sec else 0
 
-        def read_func_data(addr, size):
-            if not hasattr(pe, 'OPTIONAL_HEADER') or not hasattr(pe.OPTIONAL_HEADER, 'ImageBase'):
-                 return b'\x00' * size
-            rva = addr - pe.OPTIONAL_HEADER.ImageBase
-            offset = pe.get_offset_from_rva(rva)
-            if offset is None or offset < 0:
-                return b'\x00' * size
-            try:
-                with open(executable_path, 'rb') as f:
-                    f.seek(offset)
-                    return f.read(size)
-            except Exception:
-                return b'\x00' * size
-
     else: # ELF Logic
         with open(executable_path, 'rb') as f:
             elf = ELFFile(f)
@@ -375,28 +371,48 @@ def main(executable_path, debug=False):
             aad_value = byte_val * file_size
             text_section_aad = struct.pack('<Q', aad_value)
 
-            exec_segment = next((seg for seg in elf.iter_segments() if seg['p_type'] == 'PT_LOAD' and (seg['p_flags'] & 1)), None)
-            f.seek(exec_segment['p_offset'])
-            segment_data = f.read(exec_segment['p_filesz'])
-            hash_data = segment_data.ljust(exec_segment['p_memsz'], b'\x00')
-            text_hash = blake3(hash_data).digest()
+            # 预加载段信息
+            for seg in elf.iter_segments():
+                if seg['p_type'] == 'PT_LOAD':
+                    load_segments.append({
+                        'p_vaddr': seg['p_vaddr'],
+                        'p_filesz': seg['p_filesz'],
+                        'p_offset': seg['p_offset'],
+                        'p_memsz': seg['p_memsz'],
+                        'p_flags': seg['p_flags']
+                    })
 
-            key_sec = elf.get_section_by_name(KEY_SECTION_NAME)
-            hash_sec = elf.get_section_by_name(TEXT_HASH_SECTION_NAME)
-            table_sec = elf.get_section_by_name(FUNC_TABLE_SECTION_NAME)
+            # 查找可执行段 (PF_X = 0x1)
+            exec_segment = next((seg for seg in load_segments if (seg['p_flags'] & 1)), None)
+            
+            if exec_segment:
+                f.seek(exec_segment['p_offset'])
+                segment_data = f.read(exec_segment['p_filesz'])
+                hash_data = segment_data.ljust(exec_segment['p_memsz'], b'\x00')
+                text_hash = blake3(hash_data).digest()
+            else:
+                print("[!] Warning: Could not find executable segment for hashing.")
+
+            # [FIX] 使用 startswith 查找节区，以兼容链接器添加的后缀
+            sections_map = {}
+            target_sections = [KEY_SECTION_NAME, TEXT_HASH_SECTION_NAME, FUNC_TABLE_SECTION_NAME]
+            remaining_sections = set(target_sections)
+            
+            for section in elf.iter_sections():
+                for target in list(remaining_sections):
+                    if section.name.startswith(target):
+                        sections_map[target] = section
+                        remaining_sections.remove(target)
+                        break
+            
+            key_sec = sections_map.get(KEY_SECTION_NAME)
+            hash_sec = sections_map.get(TEXT_HASH_SECTION_NAME)
+            table_sec = sections_map.get(FUNC_TABLE_SECTION_NAME)
             
             key_offset = key_sec['sh_offset'] if key_sec else None
             hash_offset = hash_sec['sh_offset'] if hash_sec else None
             table_offset = table_sec['sh_offset'] if table_sec else None
             table_size = table_sec['sh_size'] if table_sec else 0
-            def read_func_data(addr, size):
-                for seg in elf.iter_segments():
-                    if seg['p_type'] == 'PT_LOAD' and seg['p_vaddr'] <= addr < seg['p_vaddr'] + seg['p_filesz']:
-                        offset = addr - seg['p_vaddr'] + seg['p_offset']
-                        with open(executable_path, 'rb') as f:
-                            f.seek(offset)
-                            return f.read(size)
-                return b'\x00' * size
 
     if key_offset is None or hash_offset is None or table_offset is None:
         print("[!] Error: One or more .ic sections missing or invalid.")
@@ -409,8 +425,34 @@ def main(executable_path, debug=False):
     master_key = os.urandom(32)
     encrypted_text_hash = encrypt_hash(master_key, text_hash, aad=text_section_aad)
     packed_entries = []
+    
+    # [FIX] 移除 read_func_data 闭包，直接在循环中读取
     for info in valid_funcs_info:
-        func_data = read_func_data(info['addr'], info['size'])
+        func_addr = info['addr']
+        func_size = info['size']
+        func_data = b'\x00' * func_size # Default
+        
+        if is_pe:
+            if hasattr(pe, 'OPTIONAL_HEADER') and hasattr(pe.OPTIONAL_HEADER, 'ImageBase'):
+                rva = func_addr - pe.OPTIONAL_HEADER.ImageBase
+                offset = pe.get_offset_from_rva(rva)
+                if offset is not None and offset >= 0:
+                    try:
+                        with open(executable_path, 'rb') as f:
+                            f.seek(offset)
+                            func_data = f.read(func_size)
+                    except Exception:
+                        pass
+        else: # ELF
+            # 使用预加载的 load_segments
+            for seg in load_segments:
+                if seg['p_vaddr'] <= func_addr < seg['p_vaddr'] + seg['p_filesz']:
+                    offset = func_addr - seg['p_vaddr'] + seg['p_offset']
+                    with open(executable_path, 'rb') as f:
+                        f.seek(offset)
+                        func_data = f.read(func_size)
+                    break
+
         func_hash = blake3(func_data).digest()
         
         # [FIX] 关键修改：如果是 PE 文件，将 VA 转换为 RVA 存储
@@ -433,7 +475,7 @@ def main(executable_path, debug=False):
         return
     
     # [IMPORTANT] 在写入文件之前，必须关闭 PE 对象，否则后续的 PE 更新会覆盖掉写入的密钥
-    if pe:
+    if is_pe and pe:
         pe.close()
 
     with open(executable_path, 'r+b') as f:
