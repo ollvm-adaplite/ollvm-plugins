@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.11.0)
 
 # --- 修改 1: 启用 vcpkg (必须在 project() 之前) ---
-set(CMAKE_TOOLCHAIN_FILE "E:/code/lib/vcpkg/scripts/buildsystems/vcpkg.cmake")
-
-project(llvmpass VERSION 0.1.0 LANGUAGES C CXX)
-
-# --- 新增：跨平台确定用户主目录 ---
 if(WIN32)
+    set(CMAKE_TOOLCHAIN_FILE "E:/code/lib/vcpkg/scripts/buildsystems/vcpkg.cmake")
     set(USER_HOME_DIR "$ENV{USERPROFILE}")
 else()
     set(USER_HOME_DIR "$ENV{HOME}")
 endif()
-# --------------------------------
+
+
+project(llvmpass VERSION 0.1.0 LANGUAGES C CXX)
+
+
+
+
 
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 # 导出clangd所需的查找路径

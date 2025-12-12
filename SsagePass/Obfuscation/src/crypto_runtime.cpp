@@ -349,7 +349,9 @@ FORCE_INLINE void NO_IC_INSTRUMENT lan3()
         secure_terminate();
     }
 }
+
 #else
+
 #include <elf.h>  // For ELF header parsing
 #include <fcntl.h>
 #include <fstream>
@@ -858,7 +860,7 @@ FORCE_INLINE static void NO_IC_INSTRUMENT kill_all()
 #if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__))
     __asm__ volatile("int3");
 #endif
-    secure_terminate();
+    //secure_terminate();
 }
 #endif
 
