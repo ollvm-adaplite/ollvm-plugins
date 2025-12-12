@@ -4,311 +4,466 @@ import struct
 import subprocess
 import sys
 import shutil
-from elftools.elf.elffile import ELFFile
-from elftools.elf.sections import SymbolTableSection
 from Crypto.Cipher import ChaCha20_Poly1305
 from blake3 import blake3
 
+# 尝试导入 ELF 和 PE 处理库
+try:
+    from elftools.elf.elffile import ELFFile
+    from elftools.elf.sections import SymbolTableSection
+    HAS_ELFTOOLS = True
+except ImportError:
+    HAS_ELFTOOLS = False
+
+try:
+    import pefile
+    HAS_PEFILE = True
+except ImportError:
+    HAS_PEFILE = False
+
 # --- 常量定义 ---
-# 这些节名必须与 LLVM Pass 中设置的完全一致
 KEY_SECTION_NAME = ".ic_key"
 TEXT_HASH_SECTION_NAME = ".ic_texthash"
 FUNC_TABLE_SECTION_NAME = ".ic_functable"
-# 权威信息来源：标记表 (现在使用简化的名称)
 MARKER_SECTION_NAME = ".ic_markers"
 
-# C 结构体大小 (必须与 C++ 代码中的定义匹配)
-# struct encrypted_hash { uint8_t[32], uint8_t[24], uint8_t[16] }
+# Windows 兼容的短节名
+WIN_TEXT_HASH_SEC = ".ic_text"
+WIN_FUNC_TABLE_SEC = ".ic_func"
+WIN_MARKER_SEC = ".ic_mark"
+
+# C 结构体大小
 ENCRYPTED_HASH_SIZE = 32 + 24 + 16  # 72 bytes
-# struct protected_func_info { uint64_t, uint64_t, encrypted_hash }
 FUNC_INFO_SIZE = 8 + 8 + ENCRYPTED_HASH_SIZE  # 88 bytes
-# 新的标记结构体大小: const char* + const void* (两个64位指针)
 MARKER_STRUCT_SIZE = 8 + 8 # 16 bytes
 
-def get_string_at_va(elf, va):
-    """
-    从给定的虚拟地址(VA)在ELF文件中查找并读取一个以 null 结尾的字符串。
-    """
-    for seg in elf.iter_segments():
-        if seg['p_type'] == 'PT_LOAD':
-            if seg['p_vaddr'] <= va < seg['p_vaddr'] + seg['p_filesz']:
-                offset = va - seg['p_vaddr'] + seg['p_offset']
-                elf.stream.seek(offset)
-                # 读取一段数据并找到第一个 null 终止符
-                # 假设函数名不会太长
-                data = elf.stream.read(256) 
-                try:
-                    return data.split(b'\0', 1)[0].decode('utf-8')
-                except UnicodeDecodeError:
-                    return None
-    return None
-
 def encrypt_hash(key: bytes, plaintext_hash: bytes, aad: bytes = b'') -> bytes:
-    """
-    使用给定的密钥、随机 Nonce 和 AAD 加密哈希。
-    返回一个 72 字节的 bytes 对象，其布局与 C++ 中的 encrypted_hash 结构体完全匹配。
-    """
-    nonce = os.urandom(24)  # XChaCha20 需要 24 字节的 nonce
+    nonce = os.urandom(24)
     cipher = ChaCha20_Poly1305.new(key=key, nonce=nonce)
     if aad:
         cipher.update(aad)
     ciphertext, tag = cipher.encrypt_and_digest(plaintext_hash)
-    
-    # 按照 C 结构体的顺序打包: ciphertext[32], nonce[24], tag[16]
     return struct.pack(f'<32s24s16s', ciphertext, nonce, tag)
 
 def encrypt_blob(key: bytes, plaintext: bytes, aad: bytes = b'') -> bytes:
-    """
-    使用给定的密钥、随机 Nonce 和 AAD 加密一个数据块。
-    返回一个 bytes 对象，其布局为:
-    uint64_t plaintext_size | uint8_t nonce[24] | uint8_t tag[16] | uint8_t[] ciphertext
-    """
-    nonce = os.urandom(24)  # XChaCha20 需要 24 字节的 nonce
+    nonce = os.urandom(24)
     cipher = ChaCha20_Poly1305.new(key=key, nonce=nonce)
     if aad:
         cipher.update(aad)
     ciphertext, tag = cipher.encrypt_and_digest(plaintext)
-    
-    # 按照 [大小][nonce][tag][密文] 的顺序打包
     return struct.pack(f'<Q24s16s', len(plaintext), nonce, tag) + ciphertext
+
+def get_function_sizes_via_nm(executable_path):
+    sizes = {}
+    nm_cmds = ['llvm-nm', 'nm']
+    for cmd_name in nm_cmds:
+        try:
+            cmd = [cmd_name, '--print-size', '--format=bsd', '--numeric-sort', executable_path]
+            startupinfo = None
+            if sys.platform == 'win32':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            result = subprocess.run(cmd, capture_output=True, text=True, startupinfo=startupinfo)
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        try:
+                            addr = int(parts[0], 16)
+                            size = int(parts[1], 16)
+                            type_char = parts[2].upper()
+                            if type_char in ('T', 't'): 
+                                sizes[addr] = size
+                        except ValueError:
+                            continue
+                return sizes
+        except FileNotFoundError:
+            continue
+    return sizes
+
+def get_function_sizes_pe_pdata(pe):
+    sizes = {}
+    if hasattr(pe, 'DIRECTORY_ENTRY_EXCEPTION'):
+        for entry in pe.DIRECTORY_ENTRY_EXCEPTION:
+            start_rva = entry.struct.BeginAddress
+            end_rva = entry.struct.EndAddress
+            size = end_rva - start_rva
+            va = start_rva + pe.OPTIONAL_HEADER.ImageBase
+            sizes[va] = size
+    return sizes
+
+def process_elf(executable_path, debug):
+    if not HAS_ELFTOOLS:
+        print("[!] Error: 'pyelftools' is required for ELF files.")
+        return False
+    print("[*] Detected ELF format.")
+    protected_funcs_info = []
+    with open(executable_path, 'rb') as f:
+        elf = ELFFile(f)
+        marker_section = elf.get_section_by_name(MARKER_SECTION_NAME)
+        if not marker_section:
+            print(f"[!] Error: Section '{MARKER_SECTION_NAME}' not found.")
+            return False
+        marker_data = marker_section.data()
+        symtab = elf.get_section_by_name('.symtab')
+        addr_to_size = {}
+        if isinstance(symtab, SymbolTableSection):
+            for sym in symtab.iter_symbols():
+                if sym['st_info']['type'] == 'STT_FUNC':
+                    addr_to_size[sym['st_value']] = sym['st_size']
+        if not addr_to_size:
+            addr_to_size = get_function_sizes_via_nm(executable_path)
+        num_funcs = len(marker_data) // MARKER_STRUCT_SIZE
+        for i in range(num_funcs):
+            offset = i * MARKER_STRUCT_SIZE
+            name_ptr, addr = struct.unpack('<QQ', marker_data[offset : offset + MARKER_STRUCT_SIZE])
+            name = None
+            for seg in elf.iter_segments():
+                if seg['p_type'] == 'PT_LOAD':
+                    if seg['p_vaddr'] <= name_ptr < seg['p_vaddr'] + seg['p_filesz']:
+                        file_off = name_ptr - seg['p_vaddr'] + seg['p_offset']
+                        f.seek(file_off)
+                        name = f.read(256).split(b'\0', 1)[0].decode('utf-8', errors='ignore')
+                        break
+            size = addr_to_size.get(addr, 0)
+            if name:
+                protected_funcs_info.append({'name': name, 'addr': addr, 'size': size})
+    return protected_funcs_info
+
+def process_pe(executable_path, debug):
+    if not HAS_PEFILE:
+        print("[!] Error: 'pefile' is required for PE files.")
+        return False
+    print("[*] Detected PE format.")
+    pe = pefile.PE(executable_path)
+    protected_funcs_info = []
+    marker_section = None
+    target_names = [MARKER_SECTION_NAME, WIN_MARKER_SEC]
+    for section in pe.sections:
+        name = section.Name.decode().strip('\x00')
+        if name in target_names:
+            marker_section = section
+            break
+    if not marker_section:
+        print(f"[!] Error: Section '{MARKER_SECTION_NAME}' (or '{WIN_MARKER_SEC}') not found.")
+        return False
+    marker_data = marker_section.get_data()
+    print("[*] Attempting to extract function sizes from .pdata...")
+    addr_to_size = get_function_sizes_pe_pdata(pe)
+    if not addr_to_size:
+        print("[*] .pdata empty or missing. Trying llvm-nm...")
+        addr_to_size = get_function_sizes_via_nm(executable_path)
+    num_funcs = len(marker_data) // MARKER_STRUCT_SIZE
+    image_base = pe.OPTIONAL_HEADER.ImageBase
+    temp_funcs = []
+    for i in range(num_funcs):
+        offset = i * MARKER_STRUCT_SIZE
+        name_va, func_va = struct.unpack('<QQ', marker_data[offset : offset + MARKER_STRUCT_SIZE])
+        
+        if func_va == 0 or name_va == 0:
+            continue
+
+        try:
+            name_rva = name_va - image_base
+            if name_rva < 0 or name_rva > pe.OPTIONAL_HEADER.SizeOfImage:
+                continue
+            name = pe.get_string_at_rva(name_rva).decode('utf-8', errors='ignore')
+        except Exception:
+            name = f"func_{func_va:x}"
+        
+        if not name:
+            continue
+
+        size = addr_to_size.get(func_va, 0)
+        temp_funcs.append({'name': name, 'addr': func_va, 'size': size})
+
+    if any(f['size'] == 0 for f in temp_funcs):
+        print("[*] Some sizes are 0. Using address delta heuristic...")
+        sorted_funcs = sorted(temp_funcs, key=lambda x: x['addr'])
+        for i in range(len(sorted_funcs)):
+            if sorted_funcs[i]['size'] == 0:
+                start_addr = sorted_funcs[i]['addr']
+                if i < len(sorted_funcs) - 1:
+                    end_addr = sorted_funcs[i+1]['addr']
+                    estimated_size = end_addr - start_addr
+                else:
+                    rva = start_addr - image_base
+                    sec = pe.get_section_by_rva(rva)
+                    if sec:
+                        sec_end = image_base + sec.VirtualAddress + sec.Misc_VirtualSize
+                        estimated_size = sec_end - start_addr
+                    else:
+                        estimated_size = 64
+                
+                if estimated_size > 16 * 1024 * 1024:
+                    estimated_size = 64
+                
+                sorted_funcs[i]['size'] = estimated_size
+                if debug: print(f"    - Estimated size for {sorted_funcs[i]['name']}: {estimated_size}")
+        protected_funcs_info = sorted_funcs
+    else:
+        protected_funcs_info = temp_funcs
+    pe.close()
+    return protected_funcs_info
 
 def main(executable_path, debug=False):
     print(f"[*] Processing executable: {executable_path}")
+    is_pe = False
+    with open(executable_path, 'rb') as f:
+        magic = f.read(4)
+        if magic.startswith(b'MZ'):
+            is_pe = True
+        elif not magic.startswith(b'\x7fELF'):
+            print("[!] Unknown file format.")
+            return
 
-    # --- 阶段一: 从原始文件中读取标记数据和函数信息 ---
-    print("\n--- Phase 1: Reading markers from original executable ---")
-    protected_funcs_info = []
-    try:
-        with open(executable_path, 'rb') as f:
-            elf = ELFFile(f)
+    if is_pe:
+        protected_funcs_info = process_pe(executable_path, debug)
+    else:
+        protected_funcs_info = process_elf(executable_path, debug)
 
-            # 1a. 查找 .ic_markers 节
-            print(f"[*] Locating authoritative '{MARKER_SECTION_NAME}' section...")
-            marker_section = elf.get_section_by_name(MARKER_SECTION_NAME)
-            if not marker_section:
-                print(f"[!] Error: Section '{MARKER_SECTION_NAME}' not found. Is the program compiled with the correct pass?")
-                return
-            marker_data = marker_section.data()
-            print(f"  - Found '{marker_section.name}' at file offset {marker_section['sh_offset']}, size {marker_section['sh_size']}")
-
-            # 1b. 从符号表构建地址到大小的映射
-            print("[*] Building address-to-size map from symbol table...")
-            symtab = elf.get_section_by_name('.symtab')
-            if not isinstance(symtab, SymbolTableSection):
-                print("[!] Error: '.symtab' section not found or is not a symbol table.")
-                return
-            addr_to_symbol = {sym['st_value']: sym for sym in symtab.iter_symbols() if sym['st_info']['type'] == 'STT_FUNC'}
-            print(f"  - Mapped {len(addr_to_symbol)} function symbols.")
-
-            # 1c. 解析标记数据以填充 protected_funcs_info
-            print(f"[*] Reading function markers from '{MARKER_SECTION_NAME}' data...")
-            num_funcs_from_markers = len(marker_data) // MARKER_STRUCT_SIZE
-            for i in range(num_funcs_from_markers):
-                offset = i * MARKER_STRUCT_SIZE
-                name_ptr, addr = struct.unpack('<QQ', marker_data[offset : offset + MARKER_STRUCT_SIZE])
-                name = get_string_at_va(elf, name_ptr)
-                size = 0
-                symbol = addr_to_symbol.get(addr)
-                if symbol:
-                    size = symbol['st_size']
-                if name is None:
-                    print(f"  - WARNING: Could not read name for marker at index {i} (Addr: 0x{addr:x}). Skipping.")
-                    continue
-                protected_funcs_info.append({'name': name, 'addr': addr, 'size': size})
-
-    except FileNotFoundError:
-        print(f"Error: File not found at '{executable_path}'")
-        return
-    except Exception as e:
-        print(f"An error occurred during phase 1: {e}")
+    if protected_funcs_info is False: return
+    valid_funcs_info = [info for info in protected_funcs_info if info['size'] > 0]
+    valid_funcs_info.sort(key=lambda x: x['name'])
+    print(f"  - Found {len(valid_funcs_info)} valid protected functions.")
+    if len(valid_funcs_info) == 0:
+        print("[!] No functions to protect. Exiting.")
         return
 
-    # 排序列表，因为现在它已是最终列表
-    protected_funcs_info.sort(key=lambda x: x['name'])
-    print(f"  - Found and sorted {len(protected_funcs_info)} functions from marker table.")
-    if debug:
-        for i, info in enumerate(protected_funcs_info):
-            print(f"    - Index {i}: {info['name']} (Addr: 0x{info['addr']:x}, Size: {info['size']})")
+    # --- Phase 2: Removing/Wiping section ---
+    if is_pe:
+        # Windows: 安全擦除 (Wipe)
+        print(f"\n--- Phase 2: Wiping '{WIN_MARKER_SEC}' section content (Windows Safe Mode) ---")
+        try:
+            pe = pefile.PE(executable_path)
+            marker_section = None
+            for section in pe.sections:
+                name = section.Name.decode().strip('\x00')
+                if name == WIN_MARKER_SEC:
+                    marker_section = section
+                    break
+            
+            if marker_section:
+                offset = marker_section.PointerToRawData
+                size = marker_section.SizeOfRawData
+                if offset > 0 and size > 0:
+                    pe.close() # 关闭 PE 对象以释放文件句柄
+                    with open(executable_path, 'r+b') as f:
+                        f.seek(offset)
+                        f.write(b'\x00' * size)
+                    print(f"[+] Successfully wiped {size} bytes from '{WIN_MARKER_SEC}'.")
+                else:
+                    print(f"[!] Warning: Section '{WIN_MARKER_SEC}' has invalid offset/size. Skipping wipe.")
+                    pe.close()
+            else:
+                print(f"[!] Warning: Section '{WIN_MARKER_SEC}' not found for wiping.")
+                pe.close()
+        except Exception as e:
+            print(f"[!] Error wiping section: {e}")
 
-    # --- 阶段二: 使用 objcopy 移除标记节区 ---
-    print(f"\n--- Phase 2: Removing '{MARKER_SECTION_NAME}' section ---")
-    objcopy_cmd = 'objcopy'
-    if sys.platform == 'win32':
-        objcopy_cmd = 'llvm-objcopy.exe'
-    
-    temp_output_path = executable_path + ".encheck.tmp"
-
-    try:
-        cmd = [objcopy_cmd, '--remove-section', MARKER_SECTION_NAME, executable_path, temp_output_path]
-        print(f"[*] Running command: {' '.join(cmd)}")
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    else:
+        # Linux: 物理移除 (Remove)
+        sec_to_remove = MARKER_SECTION_NAME
+        print(f"\n--- Phase 2: Removing '{sec_to_remove}' section ---")
+        objcopy_cmd = 'llvm-objcopy'
+        if shutil.which(objcopy_cmd) is None:
+            objcopy_cmd = 'objcopy'
         
-        # 用修改后的文件替换原始文件
-        shutil.move(temp_output_path, executable_path)
-        print(f"[+] Successfully removed '{MARKER_SECTION_NAME}' section.")
+        temp_output_path = executable_path + ".encheck.tmp"
+        try:
+            cmd = [objcopy_cmd, '--remove-section', sec_to_remove, executable_path, temp_output_path]
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            shutil.move(temp_output_path, executable_path)
+            print(f"[+] Successfully removed '{sec_to_remove}'.")
+        except Exception as e:
+            print(f"[!] Error removing section: {e}")
+            pass
 
-    except FileNotFoundError:
-        print(f"[!] FATAL: Command '{objcopy_cmd}' not found. Please ensure it is in your system's PATH.")
-        return
-    except subprocess.CalledProcessError as e:
-        print(f"[!] FATAL: objcopy failed with exit code {e.returncode}.")
-        print(f"    STDERR: {e.stderr.strip()}")
-        if os.path.exists(temp_output_path):
-            os.remove(temp_output_path)
-        return
-    except Exception as e:
-        print(f"An error occurred during phase 2: {e}")
-        if os.path.exists(temp_output_path):
-            os.remove(temp_output_path)
-        return
-
-    # --- 阶段三: 处理修改后的可执行文件 ---
     print(f"\n--- Phase 3: Processing modified executable ---")
-    with open(executable_path, 'r+b') as f:
-        sections = {}
-
-        # --- AAD 计算逻辑 (现在在修改后的、较小的文件上执行) ---
-        f.seek(0)
-        file_content = f.read()
-        file_size = len(file_content)
+    
+    if is_pe:
+        try:
+            pe = pefile.PE(executable_path)
+        except Exception as e:
+            print(f"[!] Error parsing modified PE: {e}")
+            return
         
-        mid_index = file_size // 2
-        the_byte_val = 0
-        found_byte_offset = -1
-        for i in range(mid_index, -1, -1):
-            if file_content[i] != 0:
-                the_byte_val = file_content[i]
-                found_byte_offset = i
+        # 1. AAD Calculation
+        with open(executable_path, 'rb') as f:
+            content = f.read()
+        file_size = len(content)
+        mid = file_size // 2
+        byte_val = 0
+        for i in range(mid, -1, -1):
+            if content[i] != 0:
+                byte_val = content[i]
+                break
+        aad_value = byte_val * file_size
+        text_section_aad = struct.pack('<Q', aad_value)
+
+        # 2. Text Hash
+        text_section = None
+        for section in pe.sections:
+            if section.Name.decode().strip('\x00') == '.text':
+                text_section = section
                 break
         
-        aad_value = the_byte_val * file_size
-        text_section_aad = struct.pack('<Q', aad_value)
-        
-        if debug:
-            print(f"[*] Calculated AAD for .text: byte=0x{the_byte_val:x} at offset {found_byte_offset}, size={file_size}, aad_val={aad_value}")
-        
-        f.seek(0)
-        
-        elf = ELFFile(f)
-
-        # 1. 查找所有必需的节 (但不包括 .ic_markers)
-        print("[*] Locating required sections in modified file...")
-        sec_names_to_find = [KEY_SECTION_NAME, TEXT_HASH_SECTION_NAME, FUNC_TABLE_SECTION_NAME]
-        remaining_sections_to_find = set(sec_names_to_find)
-        for section in elf.iter_sections():
-            for sec_name_base in list(remaining_sections_to_find):
-                if section.name.startswith(sec_name_base):
-                    sections[sec_name_base] = section
-                    print(f"  - Found '{section.name}' (as '{sec_name_base}') at file offset {section['sh_offset']}, size {section['sh_size']}")
-                    remaining_sections_to_find.remove(sec_name_base)
-                    break
-        if remaining_sections_to_find:
-            for sec_name in remaining_sections_to_find:
-                print(f"[!] Error: Section '{sec_name}' not found in modified file.")
+        if not text_section:
+            print("[!] Error: .text section not found.")
             return
 
-        # 2. 过滤掉无效函数
-        print("[*] Filtering out invalid (size=0) functions from the candidate list...")
-        valid_funcs_info = [info for info in protected_funcs_info if info['size'] > 0]
-        print(f"  - Kept {len(valid_funcs_info)} of {len(protected_funcs_info)} candidates.")
+        raw_data = text_section.get_data()
+        virt_size = text_section.Misc_VirtualSize
         
-        final_table_entry_count = len(valid_funcs_info) + 1
-        
-        # 3. 验证函数表空间是否足够
-        table_section = sections[FUNC_TABLE_SECTION_NAME]
-        encryption_overhead = 8 + 24 + 16 # 48 bytes
-        plaintext_table_size = final_table_entry_count * FUNC_INFO_SIZE
-        required_size = plaintext_table_size + encryption_overhead
-
-        if table_section['sh_size'] < required_size:
-            print(f"[!] FATAL: Section '{FUNC_TABLE_SECTION_NAME}' is too small.")
-            print(f"    Required: {required_size} bytes, Found: {table_section['sh_size']} bytes.")
-            return
-        print(f"  - Capacity check passed: Table has enough space for the encrypted blob ({required_size} bytes).")
-
-        # 4. 生成主加密密钥
-        master_key = os.urandom(32)
-        print(f"[*] Generated new master key.")
-
-        # 5. 处理可执行段
-        print("[*] Hashing and encrypting executable segment...")
-        exec_segment = next((seg for seg in elf.iter_segments() if seg['p_type'] == 'PT_LOAD' and (seg['p_flags'] & 1)), None)
-        
-        if not exec_segment:
-            print("[!] FATAL Error: Could not find an executable PT_LOAD segment in the ELF file.")
-            return
-
-        f.seek(exec_segment['p_offset'])
-        segment_data_from_file = f.read(exec_segment['p_filesz'])
-        full_segment_data = segment_data_from_file.ljust(exec_segment['p_memsz'], b'\x00')
-        text_hash = blake3(full_segment_data).digest()
-        encrypted_text_hash_struct = encrypt_hash(master_key, text_hash, aad=text_section_aad)
-
-        # 6. 处理所有受保护的函数
-        print(f"[*] Hashing and encrypting {len(valid_funcs_info)} functions...")
-        packed_valid_entries = []
-        
-        for i, info in enumerate(valid_funcs_info):
-            func_addr = info['addr']
-            func_size = info['size']
+        if len(raw_data) >= virt_size:
+            hash_data = raw_data[:virt_size]
+        else:
+            hash_data = raw_data + b'\x00' * (virt_size - len(raw_data))
             
-            file_offset = -1
-            for seg in elf.iter_segments():
-                if seg['p_type'] == 'PT_LOAD' and seg['p_vaddr'] <= func_addr < seg['p_vaddr'] + seg['p_filesz']:
-                    file_offset = func_addr - seg['p_vaddr'] + seg['p_offset']
-                    break
-            
-            if file_offset != -1:
-                f.seek(file_offset)
-                func_data = f.read(func_size)
-                func_hash = blake3(func_data).digest()
-                
-                if debug:
-                    print(f"  - [{i}] Hashing '{info['name']}': Addr=0x{func_addr:x}, Size={func_size}")
-                
-                aad_data = struct.pack('<QQ', func_addr, func_size)
-                encrypted_func_hash_struct = encrypt_hash(master_key, func_hash, aad=aad_data)
-                
-                func_info_packed = struct.pack(f'<QQ{ENCRYPTED_HASH_SIZE}s', func_addr, func_size, encrypted_func_hash_struct)
-                packed_valid_entries.append(func_info_packed)
-            else:
-                print(f"  - WARNING: Could not find file offset for '{info['name']}' (Addr: 0x{func_addr:x}). Skipping.")
-
-        # 7. 创建最终的数据 Blob
-        final_data_blob = b''.join(packed_valid_entries) + (b'\x00' * FUNC_INFO_SIZE)
-        print(f"  - Plaintext table size: {len(final_data_blob)} bytes ({len(packed_valid_entries) + 1} entries).")
-
-        # 8. 应用第二层加密保护整个函数表
-        print("[*] Applying second layer of encryption to the function table...")
-        functable_aad = blake3(encrypted_text_hash_struct).digest()
-        encrypted_functable_blob = encrypt_blob(master_key, final_data_blob, aad=functable_aad)
+        text_hash = blake3(hash_data).digest()
         
-        if debug:
-            print(f"  - AAD for table (hash of .ic_texthash content): {functable_aad.hex()}")
-            print(f"  - Final encrypted table blob size: {len(encrypted_functable_blob)} bytes")
+        # 3. Find Sections
+        sections_map = {}
+        target_sections = [KEY_SECTION_NAME, TEXT_HASH_SECTION_NAME, FUNC_TABLE_SECTION_NAME, WIN_TEXT_HASH_SEC, WIN_FUNC_TABLE_SEC]
+        for section in pe.sections:
+            name = section.Name.decode().strip('\x00')
+            if name in target_sections:
+                sections_map[name] = section
+        
+        def get_section_offset(long_name, short_name):
+            sec = sections_map.get(long_name)
+            if not sec: sec = sections_map.get(short_name)
+            if sec:
+                if sec.PointerToRawData == 0:
+                    print(f"[!] FATAL: Section '{long_name}' (or '{short_name}') has PointerToRawData=0.")
+                    return None
+                return sec.PointerToRawData
+            return None
+            
+        key_offset = get_section_offset(KEY_SECTION_NAME, KEY_SECTION_NAME)
+        hash_offset = get_section_offset(TEXT_HASH_SECTION_NAME, WIN_TEXT_HASH_SEC)
+        table_offset = get_section_offset(FUNC_TABLE_SECTION_NAME, WIN_FUNC_TABLE_SEC)
+        
+        table_sec = sections_map.get(FUNC_TABLE_SECTION_NAME)
+        if not table_sec: table_sec = sections_map.get(WIN_FUNC_TABLE_SEC)
+        table_size = table_sec.SizeOfRawData if table_sec else 0
 
-        # 9. 将所有计算好的数据写回文件
-        print("[*] Writing calculated data back to the executable...")
-        f.seek(sections[KEY_SECTION_NAME]['sh_offset'])
+        def read_func_data(addr, size):
+            if not hasattr(pe, 'OPTIONAL_HEADER') or not hasattr(pe.OPTIONAL_HEADER, 'ImageBase'):
+                 return b'\x00' * size
+            rva = addr - pe.OPTIONAL_HEADER.ImageBase
+            offset = pe.get_offset_from_rva(rva)
+            if offset is None or offset < 0:
+                return b'\x00' * size
+            try:
+                with open(executable_path, 'rb') as f:
+                    f.seek(offset)
+                    return f.read(size)
+            except Exception:
+                return b'\x00' * size
+
+    else: # ELF Logic
+        with open(executable_path, 'rb') as f:
+            elf = ELFFile(f)
+            f.seek(0); content = f.read(); file_size = len(content)
+            mid = file_size // 2
+            byte_val = 0
+            for i in range(mid, -1, -1):
+                if content[i] != 0:
+                    byte_val = content[i]
+                    break
+            aad_value = byte_val * file_size
+            text_section_aad = struct.pack('<Q', aad_value)
+
+            exec_segment = next((seg for seg in elf.iter_segments() if seg['p_type'] == 'PT_LOAD' and (seg['p_flags'] & 1)), None)
+            f.seek(exec_segment['p_offset'])
+            segment_data = f.read(exec_segment['p_filesz'])
+            hash_data = segment_data.ljust(exec_segment['p_memsz'], b'\x00')
+            text_hash = blake3(hash_data).digest()
+
+            key_sec = elf.get_section_by_name(KEY_SECTION_NAME)
+            hash_sec = elf.get_section_by_name(TEXT_HASH_SECTION_NAME)
+            table_sec = elf.get_section_by_name(FUNC_TABLE_SECTION_NAME)
+            
+            key_offset = key_sec['sh_offset'] if key_sec else None
+            hash_offset = hash_sec['sh_offset'] if hash_sec else None
+            table_offset = table_sec['sh_offset'] if table_sec else None
+            table_size = table_sec['sh_size'] if table_sec else 0
+            def read_func_data(addr, size):
+                for seg in elf.iter_segments():
+                    if seg['p_type'] == 'PT_LOAD' and seg['p_vaddr'] <= addr < seg['p_vaddr'] + seg['p_filesz']:
+                        offset = addr - seg['p_vaddr'] + seg['p_offset']
+                        with open(executable_path, 'rb') as f:
+                            f.seek(offset)
+                            return f.read(size)
+                return b'\x00' * size
+
+    if key_offset is None or hash_offset is None or table_offset is None:
+        print("[!] Error: One or more .ic sections missing or invalid.")
+        return
+
+    if key_offset == 0 or hash_offset == 0 or table_offset == 0:
+        print("[!] FATAL: One of the section offsets is 0.")
+        return
+
+    master_key = os.urandom(32)
+    encrypted_text_hash = encrypt_hash(master_key, text_hash, aad=text_section_aad)
+    packed_entries = []
+    for info in valid_funcs_info:
+        func_data = read_func_data(info['addr'], info['size'])
+        func_hash = blake3(func_data).digest()
+        
+        # [FIX] 关键修改：如果是 PE 文件，将 VA 转换为 RVA 存储
+        stored_addr = info['addr']
+        if is_pe:
+            stored_addr = info['addr'] - pe.OPTIONAL_HEADER.ImageBase
+            if debug: print(f"[DEBUG] Converted VA 0x{info['addr']:x} to RVA 0x{stored_addr:x} for {info['name']}")
+
+        aad_data = struct.pack('<QQ', stored_addr, info['size'])
+        enc_func_hash = encrypt_hash(master_key, func_hash, aad=aad_data)
+        
+        entry = struct.pack(f'<QQ{ENCRYPTED_HASH_SIZE}s', stored_addr, info['size'], enc_func_hash)
+        packed_entries.append(entry)
+
+    final_blob = b''.join(packed_entries) + (b'\x00' * FUNC_INFO_SIZE)
+    table_aad = blake3(encrypted_text_hash).digest()
+    encrypted_table = encrypt_blob(master_key, final_blob, aad=table_aad)
+    if len(encrypted_table) > table_size:
+        print(f"[!] FATAL: Table section too small. Need {len(encrypted_table)}, have {table_size}.")
+        return
+    
+    # [IMPORTANT] 在写入文件之前，必须关闭 PE 对象，否则后续的 PE 更新会覆盖掉写入的密钥
+    if pe:
+        pe.close()
+
+    with open(executable_path, 'r+b') as f:
+        f.seek(key_offset)
         f.write(master_key)
-        print(f"  - Wrote master key to section {KEY_SECTION_NAME}")
-        f.seek(sections[TEXT_HASH_SECTION_NAME]['sh_offset'])
-        f.write(encrypted_text_hash_struct)
-        print(f"  - Wrote encrypted text hash to section {TEXT_HASH_SECTION_NAME}")
-        f.seek(sections[FUNC_TABLE_SECTION_NAME]['sh_offset'])
-        f.write(encrypted_functable_blob)
-        print(f"  - Wrote encrypted function table ({len(encrypted_functable_blob)} bytes) to section {FUNC_TABLE_SECTION_NAME}")
+        f.seek(hash_offset)
+        f.write(encrypted_text_hash)
+        f.seek(table_offset)
+        f.write(encrypted_table)
+    print("[+] Integrity checks activated successfully.")
 
-    print("\n[+] Activation complete. The executable is now ready to run.")
-
+    # [NEW] 安全地更新 PE 校验和
+    # 必须重新加载 PE 文件，这样它才能看到刚才写入的密钥
+    if is_pe:
+        try:
+            print("[*] Updating PE Checksum...")
+            pe_final = pefile.PE(executable_path)
+            pe_final.OPTIONAL_HEADER.CheckSum = pe_final.generate_checksum()
+            pe_final.write(executable_path)
+            pe_final.close()
+            print("[+] PE Checksum updated successfully.")
+        except Exception as e:
+            print(f"[!] Warning: Failed to update PE Checksum: {e}")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Activates integrity checks in a compiled executable using a marker table.")
-    parser.add_argument("executable", help="Path to the compiled ELF executable.")
-    parser.add_argument("--debug", action="store_true", help="Enable detailed debug output.")
+    parser = argparse.ArgumentParser(description="Activates integrity checks.")
+    parser.add_argument("executable", help="Path to the executable.")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output.")
     args = parser.parse_args()
-    
-    if not os.path.exists(args.executable):
-        print(f"Error: File not found at '{args.executable}'")
-    else:
+    if os.path.exists(args.executable):
         main(args.executable, args.debug)
+    else:
+        print("File not found.")

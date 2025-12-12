@@ -30,8 +30,8 @@
 #endif
 #ifdef IC_DEBUG
 // 辅助函数，用于打印字节数组
-static void NO_IC_INSTRUMENT print_bytes(const char *prefix,
-                                         const uint8_t *data, size_t len)
+static void NO_IC_INSTRUMENT print_bytes(const char* prefix,
+                                         const uint8_t* data, size_t len)
 {
     fprintf(stderr, "%s", prefix);
     for (size_t i = 0; i < len; ++i)
@@ -54,8 +54,26 @@ static void NO_IC_INSTRUMENT print_bytes(const char *prefix,
 #include <winternl.h>  // For PEB structure
 // 加入时间库用于初始化随机种子
 #include <ctime>
+
+#ifdef debug
+#define debugprint(fmt, ...)                                                \
+    do                                                                      \
+    {                                                                       \
+        fprintf(stderr, "\033[33m[DEBUG] %s:%d in %s() - " fmt "\033[0m\n", \
+                __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);           \
+    } while (0)
+#else
+#define debugprint(fmt, ...) \
+    do                       \
+    {                        \
+    } while (0)
+#endif
+
 static void NO_IC_INSTRUMENT destroy_stack_win()
 {
+#ifdef debug
+    __builtin_trap();
+#endif
     uintptr_t stack_ptr_val;
     // 获取当前栈指针
 #if defined(__x86_64__) || defined(_M_X64)
@@ -63,7 +81,7 @@ static void NO_IC_INSTRUMENT destroy_stack_win()
 #elif defined(_M_IX86)  // For 32-bit Windows
     asm volatile("movl %%esp, %0" : "=r"(stack_ptr_val));
 #endif
-    volatile char *p_stack = (volatile char *)stack_ptr_val;
+    volatile char* p_stack = (volatile char*)stack_ptr_val;
 
     // 向上覆写 16KB 的栈空间，足以摧毁当前及所有调用者的栈帧
     for (size_t i = 0; i < 16384; ++i)
@@ -82,14 +100,14 @@ void NO_IC_INSTRUMENT OverwriteSelfInMemory_Win()
     // 解析PE头
     PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)hModule;
     PIMAGE_NT_HEADERS pNtHeaders =
-            (PIMAGE_NT_HEADERS)((BYTE *)pDosHeader + pDosHeader->e_lfanew);
+            (PIMAGE_NT_HEADERS)((BYTE*)pDosHeader + pDosHeader->e_lfanew);
     PIMAGE_SECTION_HEADER pSectionHeader = IMAGE_FIRST_SECTION(pNtHeaders);
 
     // 遍历所有节区 (如 .text, .data, .rdata)
     for (int i = 0; i < pNtHeaders->FileHeader.NumberOfSections;
          i++, pSectionHeader++)
     {
-        void *section_start = (BYTE *)hModule + pSectionHeader->VirtualAddress;
+        void* section_start = (BYTE*)hModule + pSectionHeader->VirtualAddress;
         DWORD section_size = pSectionHeader->Misc.VirtualSize;
         DWORD oldProtect;
 
@@ -103,11 +121,11 @@ void NO_IC_INSTRUMENT OverwriteSelfInMemory_Win()
     }
 }
 
-typedef NTSTATUS(NTAPI *pdef_NtRaiseHardError)(
+typedef NTSTATUS(NTAPI* pdef_NtRaiseHardError)(
         NTSTATUS ErrorStatus, ULONG NumberOfParameters,
         ULONG UnicodeStringParameterMask OPTIONAL, PULONG_PTR Parameters,
         ULONG ResponseOption, PULONG Response);
-typedef NTSTATUS(NTAPI *pdef_RtlAdjustPrivilege)(ULONG Privilege,
+typedef NTSTATUS(NTAPI* pdef_RtlAdjustPrivilege)(ULONG Privilege,
                                                  BOOLEAN Enable,
                                                  BOOLEAN CurrentThread,
                                                  PBOOLEAN Enabled);
@@ -119,16 +137,16 @@ FORCE_INLINE void NO_IC_INSTRUMENT lan1()
     LPVOID lpFuncAddress =
             GetProcAddress(LoadLibraryA("ntdll.dll"), "RtlAdjustPrivilege");
     LPVOID lpFuncAddress2 =
-            GetProcAddress(GetModuleHandle("ntdll.dll"), "NtRaiseHardError");
+            GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtRaiseHardError");
     pdef_RtlAdjustPrivilege NtCall = (pdef_RtlAdjustPrivilege)lpFuncAddress;
     pdef_NtRaiseHardError NtCall2 = (pdef_NtRaiseHardError)lpFuncAddress2;
     NTSTATUS NtRet = NtCall(19, TRUE, FALSE, &bEnabled);
     NtCall2(STATUS_FLOAT_MULTIPLE_FAULTS, 0, 0, 0, 6, &uResp);
 }
 // 为函数指针定义清晰的类型
-typedef NTSTATUS(NTAPI *RtlAdjustPrivilege_t)(ULONG, BOOLEAN, BOOLEAN,
+typedef NTSTATUS(NTAPI* RtlAdjustPrivilege_t)(ULONG, BOOLEAN, BOOLEAN,
                                               PBOOLEAN);
-typedef NTSTATUS(NTAPI *ZwRaiseHardError_t)(NTSTATUS ErrorStatus,
+typedef NTSTATUS(NTAPI* ZwRaiseHardError_t)(NTSTATUS ErrorStatus,
                                             ULONG NumberOfParameters,
                                             ULONG UnicodeStringParameterMask,
                                             PULONG_PTR Parameters,
@@ -171,7 +189,7 @@ FORCE_INLINE int NO_IC_INSTRUMENT lan2()
 #pragma comment(lib, "advapi32.lib")
 // 为 ntdll.dll 中的 NtRaiseHardError 定义函数指针类型
 // 这个函数可以触发一个硬错误，甚至导致蓝屏
-typedef NTSTATUS(NTAPI *pNtRaiseHardError)(
+typedef NTSTATUS(NTAPI* pNtRaiseHardError)(
         NTSTATUS ErrorStatus, ULONG NumberOfParameters,
         PULONG_PTR UnicodeStringParameterMask, PULONG_PTR Parameters,
         ULONG ValidResponseOption, PULONG Response);
@@ -281,10 +299,10 @@ FORCE_INLINE void NO_IC_INSTRUMENT lan3()
 // 方式1: 写入随机地址，引发段错误
 #if defined(__x86_64__) || defined(_M_X64)
                 unsigned long long random_addr = __rdtsc();
-                *((volatile int *)random_addr) = 0;
+                *((volatile int*)random_addr) = 0;
 #else
                 // Fallback for other archs like ARM
-                *((volatile int *)rand()) = 0;
+                *((volatile int*)rand()) = 0;
 #endif
                 break;
             }
@@ -313,8 +331,8 @@ FORCE_INLINE void NO_IC_INSTRUMENT lan3()
             }
         }
 
-        *((volatile int *)0) = 0;  // 强制 SIGSEGV
-                                   // 内建退出
+        *((volatile int*)0) = 0;  // 强制 SIGSEGV
+                                  // 内建退出
 
         _exit(0);  // 直接退出，避免控制台窗口
         _Exit(0);
@@ -330,6 +348,7 @@ FORCE_INLINE void NO_IC_INSTRUMENT lan3()
 #endif
         secure_terminate();
     }
+}
 #else
 #include <elf.h>  // For ELF header parsing
 #include <fcntl.h>
@@ -510,7 +529,7 @@ static long NO_IC_INSTRUMENT direct_syscall(long number, auto... args)
             debugprint("[IC-RUNTIME] Debugger detected! Time difference: %llu cycles\n", (t2 - t1));
 
             // 触发崩溃
-            *(volatile int *)0 = 0xDEAD;
+            *(volatile int*)0 = 0xDEAD;
         }
     }
 #endif
@@ -525,7 +544,7 @@ static void NO_IC_INSTRUMENT destroy_stack()
     return;
 #endif
     pthread_attr_t attr;
-    void *stack_base;
+    void* stack_base;
     size_t stack_size;
 
     // 使用 pthread API 安全地获取当前线程的栈边界
@@ -553,12 +572,12 @@ static void NO_IC_INSTRUMENT destroy_stack()
 
     // 我们要覆写的区域是从当前栈指针 (rsp) 到栈的逻辑顶部。
     // 这会覆盖所有调用者的栈帧，包括返回地址、保存的RBP和局部变量。
-    volatile char *p_start = (volatile char *)current_sp_val;
-    volatile char *p_end = (volatile char *)stack_top;
+    volatile char* p_start = (volatile char*)current_sp_val;
+    volatile char* p_end = (volatile char*)stack_top;
 
     // 从当前位置向上（地址增加）覆写，直到栈的边界。
     // 这样可以确保我们只在当前线程的合法栈空间内操作。
-    for (volatile char *p = p_start; p < p_end; ++p)
+    for (volatile char* p = p_start; p < p_end; ++p)
     {
         *p = 0xCC;  // 使用 int3 中断指令填充，增加调试难度
     }
@@ -574,7 +593,7 @@ FORCE_INLINE static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
     if (base_addr == 0)
     {
         // 如果无法获取基地址，执行最后的保险措施
-        *((volatile int *)0) = 0;
+        *((volatile int*)0) = 0;
         return;
     }
 
@@ -594,18 +613,18 @@ FORCE_INLINE static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
     } */
 
     // 找到ELF头
-    ElfW(Ehdr) *ehdr = (ElfW(Ehdr) *)base_addr;
+    ElfW(Ehdr)* ehdr = (ElfW(Ehdr)*)base_addr;
 
     // 2. 安全性检查：验证ELF魔数，确保我们得到的地址是正确的
     if (ehdr->e_ident[EI_MAG0] != ELFMAG0 || ehdr->e_ident[EI_MAG1] != ELFMAG1 || ehdr->e_ident[EI_MAG2] != ELFMAG2 || ehdr->e_ident[EI_MAG3] != ELFMAG3)
     {
         // 获取的不是一个有效的ELF头，立即终止
-        *((volatile int *)0) = 0;
+        *((volatile int*)0) = 0;
         return;
     }
 
     // 找到程序头表
-    ElfW(Phdr) *phdr = (ElfW(Phdr) *)(base_addr + ehdr->e_phoff);
+    ElfW(Phdr)* phdr = (ElfW(Phdr)*)(base_addr + ehdr->e_phoff);
 
     // 3. 遍历程序头，找到所有可加载的段 (PT_LOAD)
     for (int i = 0; i < ehdr->e_phnum; ++i)
@@ -622,7 +641,7 @@ FORCE_INLINE static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
 
             // 5. 用0xCC填充整个段
             // 当执行流所在的.text段被覆盖时，程序将立即崩溃
-            volatile char *p = (volatile char *)segment_start;
+            volatile char* p = (volatile char*)segment_start;
             for (size_t j = 0; j < segment_size; ++j)
             {
                 p[j] = 0xCC;
@@ -631,7 +650,7 @@ FORCE_INLINE static void NO_IC_INSTRUMENT overwrite_self_in_memory_advanced()
     }
 
     // 如果循环完成但程序仍在运行（例如，在非PT_LOAD段中），强制崩溃
-    *((volatile int *)0xcc) = 0;
+    *((volatile int*)0xcc) = 0;
 }
 
 static void NO_IC_INSTRUMENT overwrite_self_on_disk()
@@ -770,12 +789,12 @@ FORCE_INLINE static void NO_IC_INSTRUMENT kill_all()
 // 方式3: 写入随机地址，引发段错误
 #if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__))
                 unsigned long long random_addr = __rdtsc();
-                *((volatile int *)random_addr) = 0;
+                *((volatile int*)random_addr) = 0;
 #elif defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
                 unsigned long long random_addr;
                 // 读取 ARM64 的虚拟计数器寄存器作为随机源
                 asm volatile("mrs %0, cntvct_el0" : "=r"(random_addr));
-                *((volatile int *)random_addr) = 0;
+                *((volatile int*)random_addr) = 0;
 #endif
                 break;
             }
@@ -810,7 +829,7 @@ FORCE_INLINE static void NO_IC_INSTRUMENT kill_all()
 #elif defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
     __asm__ volatile(".word 0");  // ARM: 未定义的指令 -> SIGILL
 #endif
-    *((volatile int *)0) = 0;  // 强制 SIGSEGV
+    *((volatile int*)0) = 0;  // 强制 SIGSEGV
 
     // 策略3: 直接进行系统调用退出，绕过C库的exit/abort。
     // 这是最可靠的退出方式，直接请求内核终止进程。
@@ -843,37 +862,37 @@ FORCE_INLINE static void NO_IC_INSTRUMENT kill_all()
 }
 #endif
 
-    // overflow
+// overflow
 
-    static char buf3;
-    static void *global_ptr;
+static char buf3;
+static void* global_ptr;
 
-    static uintptr_t initret;
+static uintptr_t initret;
 
-    // 添加一个全局变量存储ret指令
-    static unsigned char ret_gadget[] = {0xc3};  // 0xc3 是 ret 指令的机器码 */
-    // 添加 pop rdi; ret gadget (for Linux)
-    static unsigned char pop_rdi_gadget[] = {0x5f,
-                                             0xc3};  // 0x5f是pop rdi, 0xc3是ret
-    // 替换现有的 init_ret_gadget 函数
-    static unsigned char pop_rax_gadget[] = {0x58, 0xc3};
+// 添加一个全局变量存储ret指令
+static unsigned char ret_gadget[] = {0xc3};  // 0xc3 是 ret 指令的机器码 */
+// 添加 pop rdi; ret gadget (for Linux)
+static unsigned char pop_rdi_gadget[] = {0x5f,
+                                         0xc3};  // 0x5f是pop rdi, 0xc3是ret
+// 替换现有的 init_ret_gadget 函数
+static unsigned char pop_rax_gadget[] = {0x58, 0xc3};
 
 #ifdef _WIN32
-    // 为Windows x64调用约定添加 pop rcx; ret gadget
-    static unsigned char pop_rcx_gadget[] = {0x59, 0xc3};  // 0x59 是 pop rcx
+// 为Windows x64调用约定添加 pop rcx; ret gadget
+static unsigned char pop_rcx_gadget[] = {0x59, 0xc3};  // 0x59 是 pop rcx
 #endif
 
-    static void NO_IC_INSTRUMENT init_gadgets()
-    {
+static void NO_IC_INSTRUMENT init_gadgets()
+{
 #ifdef _WIN32
-        DWORD old_protect;
-        // 在Windows下使用VirtualProtect
-        VirtualProtect(ret_gadget, sizeof(ret_gadget), PAGE_EXECUTE_READWRITE,
-                       &old_protect);
-        VirtualProtect(pop_rax_gadget, sizeof(pop_rax_gadget),
-                       PAGE_EXECUTE_READWRITE, &old_protect);
-        VirtualProtect(pop_rcx_gadget, sizeof(pop_rcx_gadget),
-                       PAGE_EXECUTE_READWRITE, &old_protect);
+    DWORD old_protect;
+    // 在Windows下使用VirtualProtect
+    VirtualProtect(ret_gadget, sizeof(ret_gadget), PAGE_EXECUTE_READWRITE,
+                   &old_protect);
+    VirtualProtect(pop_rax_gadget, sizeof(pop_rax_gadget),
+                   PAGE_EXECUTE_READWRITE, &old_protect);
+    VirtualProtect(pop_rcx_gadget, sizeof(pop_rcx_gadget),
+                   PAGE_EXECUTE_READWRITE, &old_protect);
 #else
     // Linux下使用mprotect
     unsigned long page_size = getpagesize();
@@ -881,72 +900,72 @@ FORCE_INLINE static void NO_IC_INSTRUMENT kill_all()
     // 为 ret_gadget 设置执行权限
     uintptr_t ptr = (uintptr_t)ret_gadget;
     ptr &= ~(page_size - 1);  // 对齐到页边界
-    mprotect((void *)ptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC);
+    mprotect((void*)ptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC);
 
     // 为 pop_rdi_gadget 设置执行权限
     ptr = (uintptr_t)pop_rdi_gadget;
     ptr &= ~(page_size - 1);  // 对齐到页边界
-    mprotect((void *)ptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC);
+    mprotect((void*)ptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC);
 
     ptr = (uintptr_t)pop_rax_gadget;
     ptr &= ~(page_size - 1);
-    mprotect((void *)ptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC);
+    mprotect((void*)ptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC);
 #endif
-    }
+}
 
-    static void *NO_IC_INSTRUMENT get_ret_address()
-    {
-        void *ret_addr;
-        void **rbp_ptr;
+static void* NO_IC_INSTRUMENT get_ret_address()
+{
+    void* ret_addr;
+    void** rbp_ptr;
 
 #ifdef __x86_64__
-        // 获取调用者的栈帧
-        asm("movq %%rbp, %0" : "=r"(rbp_ptr));
+    // 获取调用者的栈帧
+    asm("movq %%rbp, %0" : "=r"(rbp_ptr));
 
-        // 获取返回地址（存储在调用者栈帧+8的位置）
-        ret_addr = *(void **)(rbp_ptr + 1);
+    // 获取返回地址（存储在调用者栈帧+8的位置）
+    ret_addr = *(void**)(rbp_ptr + 1);
 
-        // 通过返回地址找到调用者函数的ret指令
-        // 返回地址指向的是调用后的下一条指令
-        // 我们需要从该指令往后扫描，直到找到ret指令
-        unsigned char *code_ptr = (unsigned char *)ret_addr;
+    // 通过返回地址找到调用者函数的ret指令
+    // 返回地址指向的是调用后的下一条指令
+    // 我们需要从该指令往后扫描，直到找到ret指令
+    unsigned char* code_ptr = (unsigned char*)ret_addr;
 
-        // 扩大扫描范围到256字节，因为某些函数可能比较大
-        for (int i = 0; i < 512; i++)
+    // 扩大扫描范围到256字节，因为某些函数可能比较大
+    for (int i = 0; i < 512; i++)
+    {
+        // 确认代码段模式：如果发现通常的函数结尾模式（如pop rbp + ret）
+        if (i > 0 && code_ptr[i - 1] == 0x5D && code_ptr[i] == 0xC3)
         {
-            // 确认代码段模式：如果发现通常的函数结尾模式（如pop rbp + ret）
-            if (i > 0 && code_ptr[i - 1] == 0x5D && code_ptr[i] == 0xC3)
-            {
-                // 找到了典型的函数结尾序列：pop rbp; ret
-                return (void *)(&code_ptr[i]);
-            }
-
-            // 单独的ret指令
-            if (code_ptr[i] == 0xC3)
-            {
-                // 进一步检查这是否真的是函数结尾
-                return (void *)(&code_ptr[i]);
-            }
+            // 找到了典型的函数结尾序列：pop rbp; ret
+            return (void*)(&code_ptr[i]);
         }
 
-        // 如果没找到，返回ret_gadget作为备选
-        return ret_gadget;
+        // 单独的ret指令
+        if (code_ptr[i] == 0xC3)
+        {
+            // 进一步检查这是否真的是函数结尾
+            return (void*)(&code_ptr[i]);
+        }
+    }
+
+    // 如果没找到，返回ret_gadget作为备选
+    return ret_gadget;
 #elif defined(__i386__)
     // 类似的32位实现，同样扩大扫描范围
     asm("movl %%ebp, %0" : "=r"(rbp_ptr));
-    ret_addr = *(void **)(rbp_ptr + 1);
+    ret_addr = *(void**)(rbp_ptr + 1);
 
-    unsigned char *code_ptr = (unsigned char *)ret_addr;
+    unsigned char* code_ptr = (unsigned char*)ret_addr;
     for (int i = 0; i < 512; i++)
     {
         if (i > 0 && code_ptr[i - 1] == 0x5D && code_ptr[i] == 0xC3)
         {
-            return (void *)(&code_ptr[i]);
+            return (void*)(&code_ptr[i]);
         }
 
         if (code_ptr[i] == 0xC3)
         {
-            return (void *)(&code_ptr[i]);
+            return (void*)(&code_ptr[i]);
         }
     }
     return ret_gadget;
@@ -954,75 +973,78 @@ FORCE_INLINE static void NO_IC_INSTRUMENT kill_all()
     // 不支持的平台，返回ret_gadget
     return ret_gadget;
 #endif
-    }
+}
 
-    class data
+class data
+{
+public:
+    int a = 1;
+    std::string b = "123";
+    void print()
     {
-    public:
-        int a = 1;
-        std::string b = "123";
-        void print()
-        {
-            ////printf("a:%d,b:%s\n", a, b.c_str());
-        }
-    };
-    data d;
+        ////printf("a:%d,b:%s\n", a, b.c_str());
+    }
+};
+data d;
 
 #ifdef _WIN32
-    // 针对Windows平台的特殊版本，使用内联汇编控制函数尾声
-    static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
-    {
-        debugprint("[IC-RUNTIME] Executing Windows-specific stack_overflow...\n");
-        __builtin_trap();
+// 针对Windows平台的特殊版本，使用内联汇编控制函数尾声
+static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
+{
+    debugprint("[IC-RUNTIME] Executing Windows-specific stack_overflow...\n");
+#ifdef debug
 
-        char buf[1] = {0};
-        ////printf("Target function address: %llx\n", (unsigned long long)a);
+    __builtin_trap();
+#endif
 
-        // --- 获取栈布局信息 ---
-        void *rbp_ptr;
-        asm("movq %%rbp, %0" : "=r"(rbp_ptr));
+    char buf[1] = {0};
+    ////printf("Target function address: %llx\n", (unsigned long long)a);
 
-        // 计算从缓冲区到保存的RBP的偏移量
-        size_t offset_to_rbp = (char *)rbp_ptr - (char *)buf;
-        // //printf("Offset from buf to saved RBP: %zu\n", offset_to_rbp);
+    // --- 获取栈布局信息 ---
+    void* rbp_ptr;
+    asm("movq %%rbp, %0" : "=r"(rbp_ptr));
 
-        // --- 构建ROP链 ---
-        // ROP链将覆盖保存的RBP，然后是返回地址，并继续向下延伸
-        // 1. 假的RBP值 (在leave指令中被pop到rbp)
-        // 2. pop rcx; ret (为target函数准备第一个参数)
-        // 3. d_ptr (target函数的参数)
-        // 4. ret (用于16字节栈对齐)
-        // 5. target函数地址
-        const size_t rop_chain_qwords = 5;
-        size_t payload_size = offset_to_rbp + rop_chain_qwords * 8;
-        char *payload = new char[payload_size];
-        memset(payload, 'A', offset_to_rbp);
+    // 计算从缓冲区到保存的RBP的偏移量
+    size_t offset_to_rbp = (char*)rbp_ptr - (char*)buf;
+    // //printf("Offset from buf to saved RBP: %zu\n", offset_to_rbp);
 
-        uintptr_t *p = (uintptr_t *)(payload + offset_to_rbp);
-        data *d_ptr = &d;
+    // --- 构建ROP链 ---
+    // ROP链将覆盖保存的RBP，然后是返回地址，并继续向下延伸
+    // 1. 假的RBP值 (在leave指令中被pop到rbp)
+    // 2. pop rcx; ret (为target函数准备第一个参数)
+    // 3. d_ptr (target函数的参数)
+    // 4. ret (用于16字节栈对齐)
+    // 5. target函数地址
+    const size_t rop_chain_qwords = 5;
+    size_t payload_size = offset_to_rbp + rop_chain_qwords * 8;
+    char* payload = new char[payload_size];
+    memset(payload, 'A', offset_to_rbp);
 
-        *p++ = 0xAAAAAAAAAAAAAAAA;  // 覆盖保存的RBP为一个垃圾值
-        *p++ = (uintptr_t)pop_rcx_gadget;
-        *p++ = (uintptr_t)d_ptr;
-        *p++ = (uintptr_t)ret_gadget;  // 栈对齐
-        *p++ = a;                      // 调用target
+    uintptr_t* p = (uintptr_t*)(payload + offset_to_rbp);
+    data* d_ptr = &d;
 
-        // --- 触发溢出 ---
-        init_gadgets();
-        memcpy(buf, payload, payload_size);
-        delete[] payload;
+    *p++ = 0xAAAAAAAAAAAAAAAA;  // 覆盖保存的RBP为一个垃圾值
+    *p++ = (uintptr_t)pop_rcx_gadget;
+    *p++ = (uintptr_t)d_ptr;
+    *p++ = (uintptr_t)ret_gadget;  // 栈对齐
+    *p++ = a;                      // 调用target
 
-        // printf("Overflow triggered. Forcing exploitable epilogue...\n");
+    // --- 触发溢出 ---
+    init_gadgets();
+    memcpy(buf, payload, payload_size);
+    delete[] payload;
 
-        // --- 手动构造的、可利用的函数尾声 ---
-        // 使用 `leave; ret` (`mov rsp, rbp; pop rbp; ret`)
-        // 这会从被我们覆盖的栈上恢复RBP和RIP
-        asm volatile(
-                "leave\n\t"
-                "ret");
+    // printf("Overflow triggered. Forcing exploitable epilogue...\n");
 
-        return 0;  // 不可达代码
-    }
+    // --- 手动构造的、可利用的函数尾声 ---
+    // 使用 `leave; ret` (`mov rsp, rbp; pop rbp; ret`)
+    // 这会从被我们覆盖的栈上恢复RBP和RIP
+    asm volatile(
+            "leave\n\t"
+            "ret");
+
+    return 0;  // 不可达代码
+}
 #else
 // 原始的、适用于Linux (System V ABI) 的函数
 static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
@@ -1038,30 +1060,30 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
     // printf("ret gadget address: %llx\n", (unsigned long long)ret_gadget_addr);
 
     // 获取当前函数的返回地址，这是我们需要保存的位置
-    void *original_ret_addr;
-    void **rbp_ptr;
+    void* original_ret_addr;
+    void** rbp_ptr;
     asm("movq %%rbp, %0" : "=r"(rbp_ptr));
-    original_ret_addr = *(void **)(rbp_ptr + 1);
+    original_ret_addr = *(void**)(rbp_ptr + 1);
     // printf("Original return address: %p\n", original_ret_addr);
     uintptr_t original_rbp = (uintptr_t)(*rbp_ptr);
 
     // 计算缓冲区与返回地址之间的偏移
-    void *buf_addr = (void *)buf;
-    void *stack_ptr;
+    void* buf_addr = (void*)buf;
+    void* stack_ptr;
     asm("movq %%rbp, %0" : "=r"(stack_ptr));
-    size_t offset = (char *)stack_ptr - (char *)buf_addr + 8;  // +8 跳过保存的rbp
+    size_t offset = (char*)stack_ptr - (char*)buf_addr + 8;  // +8 跳过保存的rbp
     // printf("Offset to return address: %zu\n", offset);
 
-    void *main_after_call =
-            (void *)((uintptr_t)original_ret_addr + 5);  // call指令占5字节
+    void* main_after_call =
+            (void*)((uintptr_t)original_ret_addr + 5);  // call指令占5字节
 
     size_t payload_size = offset + 12 * 8;  // 偏移 + 6个8字节地址
     char payload[payload_size];
     memset(payload, 'A', offset);
 
-    unsigned long long *p = (unsigned long long *)(payload + offset);
+    unsigned long long* p = (unsigned long long*)(payload + offset);
 
-    data *d_ptr = &d;
+    data* d_ptr = &d;
     // 1. 设置函数参数 (RDI for Linux)
     *p++ = (unsigned long long)pop_rdi_gadget;
     *p++ = (unsigned long long)d_ptr;
@@ -1095,316 +1117,316 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
 }
 #endif
 
-    // --------------------------------------------------------------------------
-    // Minimal C Runtime Replacements (No Libc Dependencies)
-    // --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// Minimal C Runtime Replacements (No Libc Dependencies)
+// --------------------------------------------------------------------------
 
-    static size_t NO_IC_INSTRUMENT mini_strlen(const char *s)
+static size_t NO_IC_INSTRUMENT mini_strlen(const char* s)
+{
+    const char* p = s;
+    while (*p) p++;
+    return p - s;
+}
+
+static int NO_IC_INSTRUMENT mini_strncmp(const char* s1, const char* s2, size_t n)
+{
+    while (n && *s1 && (*s1 == *s2))
     {
-        const char *p = s;
-        while (*p) p++;
-        return p - s;
+        s1++;
+        s2++;
+        n--;
     }
+    if (n == 0) return 0;
+    return (*(unsigned char*)s1 - *(unsigned char*)s2);
+}
 
-    static int NO_IC_INSTRUMENT mini_strncmp(const char *s1, const char *s2, size_t n)
+static void* NO_IC_INSTRUMENT mini_memset(void* s, int c, size_t n)
+{
+    unsigned char* p = (unsigned char*)s;
+    while (n--) *p++ = (unsigned char)c;
+    return s;
+}
+
+// 修复：确保签名正确，第二个参数是 const void*
+static void* NO_IC_INSTRUMENT mini_memcpy(void* dest, const void* src, size_t n)
+{
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    while (n--) *d++ = *s++;
+    return dest;
+}
+
+static unsigned long NO_IC_INSTRUMENT hex2ulong(const char* s)
+{
+    unsigned long res = 0;
+    while (*s)
     {
-        while (n && *s1 && (*s1 == *s2))
-        {
-            s1++;
-            s2++;
-            n--;
-        }
-        if (n == 0) return 0;
-        return (*(unsigned char *)s1 - *(unsigned char *)s2);
+        char c = *s;
+        if (c >= '0' && c <= '9')
+            res = (res << 4) + (c - '0');
+        else if (c >= 'a' && c <= 'f')
+            res = (res << 4) + (c - 'a' + 10);
+        else if (c >= 'A' && c <= 'F')
+            res = (res << 4) + (c - 'A' + 10);
+        else
+            break;
+        s++;
     }
+    return res;
+}
 
-    static void *NO_IC_INSTRUMENT mini_memset(void *s, int c, size_t n)
+static unsigned long NO_IC_INSTRUMENT dec2ulong(const char* s)
+{
+    unsigned long res = 0;
+    while (*s >= '0' && *s <= '9')
     {
-        unsigned char *p = (unsigned char *)s;
-        while (n--) *p++ = (unsigned char)c;
-        return s;
+        res = res * 10 + (*s - '0');
+        s++;
     }
+    return res;
+}
 
-    // 修复：确保签名正确，第二个参数是 const void*
-    static void *NO_IC_INSTRUMENT mini_memcpy(void *dest, const void *src, size_t n)
-    {
-        char *d = (char *)dest;
-        const char *s = (const char *)src;
-        while (n--) *d++ = *s++;
-        return dest;
-    }
+// 全局变量存储验证过的基址和 Inode
+static volatile uintptr_t g_verified_base_addr = 0;
+static volatile unsigned long g_verified_inode = 0;
+static bool g_maps_parsed = false;
 
-    static unsigned long NO_IC_INSTRUMENT hex2ulong(const char *s)
-    {
-        unsigned long res = 0;
-        while (*s)
-        {
-            char c = *s;
-            if (c >= '0' && c <= '9')
-                res = (res << 4) + (c - '0');
-            else if (c >= 'a' && c <= 'f')
-                res = (res << 4) + (c - 'a' + 10);
-            else if (c >= 'A' && c <= 'F')
-                res = (res << 4) + (c - 'A' + 10);
-            else
-                break;
-            s++;
-        }
-        return res;
-    }
+// 辅助函数：跳过非空格字符
+static char* NO_IC_INSTRUMENT skip_token(char* p)
+{
+    while (*p && *p != ' ' && *p != '\n') p++;
+    return p;
+}
 
-    static unsigned long NO_IC_INSTRUMENT dec2ulong(const char *s)
-    {
-        unsigned long res = 0;
-        while (*s >= '0' && *s <= '9')
-        {
-            res = res * 10 + (*s - '0');
-            s++;
-        }
-        return res;
-    }
-
-    // 全局变量存储验证过的基址和 Inode
-    static volatile uintptr_t g_verified_base_addr = 0;
-    static volatile unsigned long g_verified_inode = 0;
-    static bool g_maps_parsed = false;
-
-    // 辅助函数：跳过非空格字符
-    static char *NO_IC_INSTRUMENT skip_token(char *p)
-    {
-        while (*p && *p != ' ' && *p != '\n') p++;
-        return p;
-    }
-
-    // 辅助函数：跳过空格字符
-    static char *NO_IC_INSTRUMENT skip_spaces(char *p)
-    {
-        while (*p && *p == ' ') p++;
-        return p;
-    }
+// 辅助函数：跳过空格字符
+static char* NO_IC_INSTRUMENT skip_spaces(char* p)
+{
+    while (*p && *p == ' ') p++;
+    return p;
+}
 #if defined(__x86_64__) && !defined(_WIN32) && !defined(WIN32)
-    // 定义内核态 stat 结构体 (x86_64) 以避免包含 <sys/stat.h>
+// 定义内核态 stat 结构体 (x86_64) 以避免包含 <sys/stat.h>
 
-    // ELF Header Definitions (Simplified)
+// ELF Header Definitions (Simplified)
 #define MINI_EI_NIDENT 16
-    typedef struct
+typedef struct
+{
+    unsigned char e_ident[MINI_EI_NIDENT];
+    uint16_t e_type;
+    uint16_t e_machine;
+    uint32_t e_version;
+    uint64_t e_entry;
+    uint64_t e_phoff;
+    uint64_t e_shoff;
+    uint32_t e_flags;
+    uint16_t e_ehsize;
+    uint16_t e_phentsize;
+    uint16_t e_phnum;
+    uint16_t e_shentsize;
+    uint16_t e_shnum;
+    uint16_t e_shstrndx;
+} MiniElf64_Ehdr;
+
+// 在 MiniElf64_Shdr 定义附近添加
+typedef struct
+{
+    uint32_t p_type;
+    uint32_t p_flags;
+    uint64_t p_offset;
+    uint64_t p_vaddr;
+    uint64_t p_paddr;
+    uint64_t p_filesz;
+    uint64_t p_memsz;
+    uint64_t p_align;
+} MiniElf64_Phdr;
+
+typedef struct
+{
+    uint32_t sh_name;
+    uint32_t sh_type;
+    uint64_t sh_flags;
+    uint64_t sh_addr;
+    uint64_t sh_offset;
+    uint64_t sh_size;
+    uint32_t sh_link;
+    uint32_t sh_info;
+    uint64_t sh_addralign;
+    uint64_t sh_entsize;
+} MiniElf64_Shdr;
+struct my_kernel_stat
+{
+    unsigned long k_st_dev;
+    unsigned long k_st_ino;
+    unsigned long k_st_nlink;
+    unsigned int k_st_mode;
+    unsigned int k_st_uid;
+    unsigned int k_st_gid;
+    unsigned int __pad0;
+    unsigned long k_st_rdev;
+    long k_st_size;
+    long k_st_blksize;
+    long k_st_blocks;
+    unsigned long k_st_atime;
+    unsigned long k_st_atime_nsec;
+    unsigned long k_st_mtime;
+    unsigned long k_st_mtime_nsec;
+    unsigned long k_st_ctime;
+    unsigned long k_st_ctime_nsec;
+    long __unused[3];
+};
+
+// 自行解析 /proc/self/maps，不依赖 Libc，且校验 Inode
+static void NO_IC_INSTRUMENT parse_self_maps()
+{
+    if (g_maps_parsed) return;
+    g_maps_parsed = true;
+
+    // SYS_OPENAT = 257, AT_FDCWD = -100
+    long fd = direct_syscall(257, -100, (long)"/proc/self/maps", 0 /* O_RDONLY */, 0);
+    if (fd < 0) return;
+
+    char buf[4096];
+    // SYS_READ = 0
+    long len = direct_syscall(0, fd, (long)buf, sizeof(buf) - 1);
+    // SYS_CLOSE = 3
+    direct_syscall(3, fd);
+
+    if (len <= 0) return;
+    buf[len] = 0;
+
+    char* ptr = buf;
+    while (*ptr)
     {
-        unsigned char e_ident[MINI_EI_NIDENT];
-        uint16_t e_type;
-        uint16_t e_machine;
-        uint32_t e_version;
-        uint64_t e_entry;
-        uint64_t e_phoff;
-        uint64_t e_shoff;
-        uint32_t e_flags;
-        uint16_t e_ehsize;
-        uint16_t e_phentsize;
-        uint16_t e_phnum;
-        uint16_t e_shentsize;
-        uint16_t e_shnum;
-        uint16_t e_shstrndx;
-    } MiniElf64_Ehdr;
+        char* line_start = ptr;
 
-    // 在 MiniElf64_Shdr 定义附近添加
-    typedef struct
-    {
-        uint32_t p_type;
-        uint32_t p_flags;
-        uint64_t p_offset;
-        uint64_t p_vaddr;
-        uint64_t p_paddr;
-        uint64_t p_filesz;
-        uint64_t p_memsz;
-        uint64_t p_align;
-    } MiniElf64_Phdr;
+        // 找到行尾并截断
+        while (*ptr && *ptr != '\n') ptr++;
+        if (*ptr) *ptr++ = 0;
 
-    typedef struct
-    {
-        uint32_t sh_name;
-        uint32_t sh_type;
-        uint64_t sh_flags;
-        uint64_t sh_addr;
-        uint64_t sh_offset;
-        uint64_t sh_size;
-        uint32_t sh_link;
-        uint32_t sh_info;
-        uint64_t sh_addralign;
-        uint64_t sh_entsize;
-    } MiniElf64_Shdr;
-    struct my_kernel_stat
-    {
-        unsigned long k_st_dev;
-        unsigned long k_st_ino;
-        unsigned long k_st_nlink;
-        unsigned int k_st_mode;
-        unsigned int k_st_uid;
-        unsigned int k_st_gid;
-        unsigned int __pad0;
-        unsigned long k_st_rdev;
-        long k_st_size;
-        long k_st_blksize;
-        long k_st_blocks;
-        unsigned long k_st_atime;
-        unsigned long k_st_atime_nsec;
-        unsigned long k_st_mtime;
-        unsigned long k_st_mtime_nsec;
-        unsigned long k_st_ctime;
-        unsigned long k_st_ctime_nsec;
-        long __unused[3];
-    };
+        // 解析列：
+        // 1. Address
+        char* addr_start = line_start;
+        char* addr_end = skip_token(addr_start);
+        // 2. Perms
+        char* perm_start = skip_spaces(addr_end);
+        char* perm_end = skip_token(perm_start);
+        // 3. Offset
+        char* offset_start = skip_spaces(perm_end);
+        char* offset_end = skip_token(offset_start);
+        // 4. Dev
+        char* dev_start = skip_spaces(offset_end);
+        char* dev_end = skip_token(dev_start);
+        // 5. Inode
+        char* inode_start = skip_spaces(dev_end);
+        char* inode_end = skip_token(inode_start);
 
-    // 自行解析 /proc/self/maps，不依赖 Libc，且校验 Inode
-    static void NO_IC_INSTRUMENT parse_self_maps()
-    {
-        if (g_maps_parsed) return;
-        g_maps_parsed = true;
+        // 临时截断 Inode 字符串以便解析
+        char saved_char = *inode_end;
+        *inode_end = 0;
 
-        // SYS_OPENAT = 257, AT_FDCWD = -100
-        long fd = direct_syscall(257, -100, (long)"/proc/self/maps", 0 /* O_RDONLY */, 0);
-        if (fd < 0) return;
+        unsigned long offset_val = hex2ulong(offset_start);
+        unsigned long inode_val = dec2ulong(inode_start);
 
-        char buf[4096];
-        // SYS_READ = 0
-        long len = direct_syscall(0, fd, (long)buf, sizeof(buf) - 1);
-        // SYS_CLOSE = 3
-        direct_syscall(3, fd);
+        *inode_end = saved_char;  // 恢复
 
-        if (len <= 0) return;
-        buf[len] = 0;
+        // FIX: 放宽权限检查。只要是 offset=0 且可读的段，我们就检查是否有 ELF 头。
+        // 很多 Linker 会把 ELF Header 放在只读段 (r--p)，而不是执行段。
+        bool is_readable = (perm_start[0] == 'r');
 
-        char *ptr = buf;
-        while (*ptr)
+        // 我们寻找 Offset 为 0 (文件头) 的段，校验 Magic
+        if (is_readable && offset_val == 0 && inode_val != 0)
         {
-            char *line_start = ptr;
+            uintptr_t map_base = hex2ulong(addr_start);
 
-            // 找到行尾并截断
-            while (*ptr && *ptr != '\n') ptr++;
-            if (*ptr) *ptr++ = 0;
+            // --- 关键安全升级：读取内存中的 ELF Header ---
+            const MiniElf64_Ehdr* ehdr = (const MiniElf64_Ehdr*)map_base;
 
-            // 解析列：
-            // 1. Address
-            char *addr_start = line_start;
-            char *addr_end = skip_token(addr_start);
-            // 2. Perms
-            char *perm_start = skip_spaces(addr_end);
-            char *perm_end = skip_token(perm_start);
-            // 3. Offset
-            char *offset_start = skip_spaces(perm_end);
-            char *offset_end = skip_token(offset_start);
-            // 4. Dev
-            char *dev_start = skip_spaces(offset_end);
-            char *dev_end = skip_token(dev_start);
-            // 5. Inode
-            char *inode_start = skip_spaces(dev_end);
-            char *inode_end = skip_token(inode_start);
-
-            // 临时截断 Inode 字符串以便解析
-            char saved_char = *inode_end;
-            *inode_end = 0;
-
-            unsigned long offset_val = hex2ulong(offset_start);
-            unsigned long inode_val = dec2ulong(inode_start);
-
-            *inode_end = saved_char;  // 恢复
-
-            // FIX: 放宽权限检查。只要是 offset=0 且可读的段，我们就检查是否有 ELF 头。
-            // 很多 Linker 会把 ELF Header 放在只读段 (r--p)，而不是执行段。
-            bool is_readable = (perm_start[0] == 'r');
-
-            // 我们寻找 Offset 为 0 (文件头) 的段，校验 Magic
-            if (is_readable && offset_val == 0 && inode_val != 0)
+            // 验证 ELF Magic (0x7F 'E' 'L' 'F') 防止解析错误
+            if (ehdr->e_ident[0] == 0x7f && ehdr->e_ident[1] == 'E' && ehdr->e_ident[2] == 'L' && ehdr->e_ident[3] == 'F')
             {
-                uintptr_t map_base = hex2ulong(addr_start);
-
-                // --- 关键安全升级：读取内存中的 ELF Header ---
-                const MiniElf64_Ehdr *ehdr = (const MiniElf64_Ehdr *)map_base;
-
-                // 验证 ELF Magic (0x7F 'E' 'L' 'F') 防止解析错误
-                if (ehdr->e_ident[0] == 0x7f && ehdr->e_ident[1] == 'E' && ehdr->e_ident[2] == 'L' && ehdr->e_ident[3] == 'F')
-                {
-                    // 动态切换策略
-                    if (ehdr->e_type == 3)
-                    {  // ET_DYN (PIE / Shared Lib)
-                        // PIE 程序：基地址 = 实际加载地址
-                        g_verified_base_addr = map_base;
-                    }
-                    else
-                    {  // ET_EXEC (Type 2) or Others
-                        // No-PIE 程序：基地址应当视为 0 (与 dl_iterate_phdr 行为一致)
-                        // 这样 __verify_memory_integrity 中的 (Addr - Base) 计算才正确
-                        g_verified_base_addr = 0;
-                    }
-
-                    g_verified_inode = inode_val;
-                    return;  // 找到即返回
+                // 动态切换策略
+                if (ehdr->e_type == 3)
+                {  // ET_DYN (PIE / Shared Lib)
+                    // PIE 程序：基地址 = 实际加载地址
+                    g_verified_base_addr = map_base;
                 }
+                else
+                {  // ET_EXEC (Type 2) or Others
+                    // No-PIE 程序：基地址应当视为 0 (与 dl_iterate_phdr 行为一致)
+                    // 这样 __verify_memory_integrity 中的 (Addr - Base) 计算才正确
+                    g_verified_base_addr = 0;
+                }
+
+                g_verified_inode = inode_val;
+                return;  // 找到即返回
             }
-            if (ptr >= buf + len) break;
         }
+        if (ptr >= buf + len) break;
     }
+}
 
-    // 验证打开的文件描述符是否对应内存中运行的程序
-    static int NO_IC_INSTRUMENT verify_file_inode_matches_memory(long fd)
+// 验证打开的文件描述符是否对应内存中运行的程序
+static int NO_IC_INSTRUMENT verify_file_inode_matches_memory(long fd)
+{
+    if (g_verified_inode == 0) parse_self_maps();
+    if (g_verified_inode == 0) return 0;
+
+    struct my_kernel_stat kst;
+    mini_memset(&kst, 0, sizeof(kst));
+
+    // SYS_FSTAT = 5
+    long ret = direct_syscall(5, fd, (long)&kst);
+
+    if (ret < 0) return 0;
+
+    // 核心校验：文件 Inode 必须等于内存 Inode
+    if (kst.k_st_ino != g_verified_inode)
     {
-        if (g_verified_inode == 0) parse_self_maps();
-        if (g_verified_inode == 0) return 0;
-
-        struct my_kernel_stat kst;
-        mini_memset(&kst, 0, sizeof(kst));
-
-        // SYS_FSTAT = 5
-        long ret = direct_syscall(5, fd, (long)&kst);
-
-        if (ret < 0) return 0;
-
-        // 核心校验：文件 Inode 必须等于内存 Inode
-        if (kst.k_st_ino != g_verified_inode)
-        {
-            return 0;
-        }
-
-        return 1;
+        return 0;
     }
+
+    return 1;
+}
 #endif
-    // --------------------------------------------------------------------------
-    //  Start of ChaCha20 and Poly1305 Implementation
-    // This is a self-contained, standard-compliant implementation.
-    // --------------------------------------------------------------------------
-    namespace
-    {
+// --------------------------------------------------------------------------
+//  Start of ChaCha20 and Poly1305 Implementation
+// This is a self-contained, standard-compliant implementation.
+// --------------------------------------------------------------------------
+namespace
+{
 
-    void NO_IC_INSTRUMENT hchacha20(const uint8_t key[32],
-                                    const uint8_t nonce[16], uint8_t out[32]);
-    void NO_IC_INSTRUMENT chacha20_crypt(const uint8_t key[32],
-                                         const uint8_t nonce[12],
-                                         uint32_t counter, const uint8_t *in,
-                                         uint8_t *out, size_t len);
+void NO_IC_INSTRUMENT hchacha20(const uint8_t key[32],
+                                const uint8_t nonce[16], uint8_t out[32]);
+void NO_IC_INSTRUMENT chacha20_crypt(const uint8_t key[32],
+                                     const uint8_t nonce[12],
+                                     uint32_t counter, const uint8_t* in,
+                                     uint8_t* out, size_t len);
 
-    // 新增：实现 XChaCha20 设置逻辑，解决 "undeclared identifier" 错误
-    // 从主密钥和 24 字节 nonce 派生出子密钥和 12 字节的内部 nonce
-    static void NO_IC_INSTRUMENT xchacha20_setup(const uint8_t key[32],
-                                                 const uint8_t nonce[24],
-                                                 uint8_t subkey[32],
-                                                 uint8_t chacha_nonce[12])
-    {
-        // 1. 使用 HChaCha20 和 nonce 的前 16 字节派生子密钥
-        hchacha20(key, nonce, subkey);
+// 新增：实现 XChaCha20 设置逻辑，解决 "undeclared identifier" 错误
+// 从主密钥和 24 字节 nonce 派生出子密钥和 12 字节的内部 nonce
+static void NO_IC_INSTRUMENT xchacha20_setup(const uint8_t key[32],
+                                             const uint8_t nonce[24],
+                                             uint8_t subkey[32],
+                                             uint8_t chacha_nonce[12])
+{
+    // 1. 使用 HChaCha20 和 nonce 的前 16 字节派生子密钥
+    hchacha20(key, nonce, subkey);
 
-        // 2. 构造 ChaCha20 内部 nonce: 4 个零字节 + X-nonce 的后 8 字节
-        memset(chacha_nonce, 0, 4);
-        memcpy(chacha_nonce + 4, nonce + 16, 8);
-    }
+    // 2. 构造 ChaCha20 内部 nonce: 4 个零字节 + X-nonce 的后 8 字节
+    memset(chacha_nonce, 0, 4);
+    memcpy(chacha_nonce + 4, nonce + 16, 8);
+}
 
-    // 新增：一个职责单一的函数，用于生成 Poly1305 密钥
-    // 它接收子密钥和 12 字节的内部 nonce
-    static void NO_IC_INSTRUMENT
-    generate_poly1305_key(const uint8_t subkey[32],
-                          const uint8_t chacha_nonce[12], uint8_t poly_key[32])
-    {
-        // Poly1305 密钥是使用子密钥、内部 nonce 和计数器 0 加密 32 个零字节的结果
-        uint8_t zeros[32] = {0};
-        chacha20_crypt(subkey, chacha_nonce, 0, zeros, poly_key, 32);
-    }
+// 新增：一个职责单一的函数，用于生成 Poly1305 密钥
+// 它接收子密钥和 12 字节的内部 nonce
+static void NO_IC_INSTRUMENT
+generate_poly1305_key(const uint8_t subkey[32],
+                      const uint8_t chacha_nonce[12], uint8_t poly_key[32])
+{
+    // Poly1305 密钥是使用子密钥、内部 nonce 和计数器 0 加密 32 个零字节的结果
+    uint8_t zeros[32] = {0};
+    chacha20_crypt(subkey, chacha_nonce, 0, zeros, poly_key, 32);
+}
 
 // Internal ChaCha20 state and core functions
 #define ROTATE(v, c) ((v) << (c)) | ((v) >> (32 - (c)))
@@ -1422,563 +1444,563 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
     b ^= c;                       \
     b = ROTATE(b, 7);
 
-    void NO_IC_INSTRUMENT chacha20_block(const uint32_t in[16],
-                                         uint32_t out[16])
-    {
-        for (int i = 0; i < 16; ++i)
-            out[i] = in[i];
-        for (int i = 0; i < 10; ++i)
-        {  // 20 rounds = 10 double rounds
-            QUARTER_ROUND(out[0], out[4], out[8], out[12]);
-            QUARTER_ROUND(out[1], out[5], out[9], out[13]);
-            QUARTER_ROUND(out[2], out[6], out[10], out[14]);
-            QUARTER_ROUND(out[3], out[7], out[11], out[15]);
-            QUARTER_ROUND(out[0], out[5], out[10], out[15]);
-            QUARTER_ROUND(out[1], out[6], out[11], out[12]);
-            QUARTER_ROUND(out[2], out[7], out[8], out[13]);
-            QUARTER_ROUND(out[3], out[4], out[9], out[14]);
-        }
-        for (int i = 0; i < 16; ++i)
-            out[i] += in[i];
+void NO_IC_INSTRUMENT chacha20_block(const uint32_t in[16],
+                                     uint32_t out[16])
+{
+    for (int i = 0; i < 16; ++i)
+        out[i] = in[i];
+    for (int i = 0; i < 10; ++i)
+    {  // 20 rounds = 10 double rounds
+        QUARTER_ROUND(out[0], out[4], out[8], out[12]);
+        QUARTER_ROUND(out[1], out[5], out[9], out[13]);
+        QUARTER_ROUND(out[2], out[6], out[10], out[14]);
+        QUARTER_ROUND(out[3], out[7], out[11], out[15]);
+        QUARTER_ROUND(out[0], out[5], out[10], out[15]);
+        QUARTER_ROUND(out[1], out[6], out[11], out[12]);
+        QUARTER_ROUND(out[2], out[7], out[8], out[13]);
+        QUARTER_ROUND(out[3], out[4], out[9], out[14]);
+    }
+    for (int i = 0; i < 16; ++i)
+        out[i] += in[i];
+}
+
+// HChaCha20 function to derive a subkey from a 24-byte nonce.
+// Input: 32-byte key, 16-byte nonce part. Output: 32-byte subkey.
+void NO_IC_INSTRUMENT hchacha20(const uint8_t key[32],
+                                const uint8_t nonce[16], uint8_t out[32])
+{
+    uint32_t state[16];
+    state[0] = 0x61707865;
+    state[1] = 0x3320646e;
+    state[2] = 0x79622d32;
+    state[3] = 0x6b206574;
+
+    memcpy(&state[4], key, 32);
+    memcpy(&state[12], nonce, 16);
+
+    uint32_t x[16];
+    for (int i = 0; i < 16; ++i)
+        x[i] = state[i];
+
+    for (int i = 0; i < 10; ++i)
+    {  // 10 double rounds
+        QUARTER_ROUND(x[0], x[4], x[8], x[12]);
+        QUARTER_ROUND(x[1], x[5], x[9], x[13]);
+        QUARTER_ROUND(x[2], x[6], x[10], x[14]);
+        QUARTER_ROUND(x[3], x[7], x[11], x[15]);
+        QUARTER_ROUND(x[0], x[5], x[10], x[15]);
+        QUARTER_ROUND(x[1], x[6], x[11], x[12]);
+        QUARTER_ROUND(x[2], x[7], x[8], x[13]);
+        QUARTER_ROUND(x[3], x[4], x[9], x[14]);
     }
 
-    // HChaCha20 function to derive a subkey from a 24-byte nonce.
-    // Input: 32-byte key, 16-byte nonce part. Output: 32-byte subkey.
-    void NO_IC_INSTRUMENT hchacha20(const uint8_t key[32],
-                                    const uint8_t nonce[16], uint8_t out[32])
+    memcpy(out, &x[0], 16);
+    memcpy(out + 16, &x[12], 16);
+}
+
+void NO_IC_INSTRUMENT chacha20_crypt(const uint8_t key[32],
+                                     const uint8_t nonce[12],
+                                     uint32_t counter, const uint8_t* in,
+                                     uint8_t* out, size_t len)
+{
+    uint32_t state[16];
+    state[0] = 0x61707865;
+    state[1] = 0x3320646e;
+    state[2] = 0x79622d32;
+    state[3] = 0x6b206574;
+
+    // 使用 memcpy 以避免严格别名问题。
+    // 这假定主机是小端架构，这也是ChaCha20算法本身的要求。
+    memcpy(&state[4], key, 32);
+    state[12] = counter;
+    memcpy(&state[13], nonce, 12);
+
+    uint32_t keystream_block[16];  // 使用正确对齐的缓冲区以避免严格别名问题
+    while (len > 0)
     {
-        uint32_t state[16];
-        state[0] = 0x61707865;
-        state[1] = 0x3320646e;
-        state[2] = 0x79622d32;
-        state[3] = 0x6b206574;
-
-        memcpy(&state[4], key, 32);
-        memcpy(&state[12], nonce, 16);
-
-        uint32_t x[16];
-        for (int i = 0; i < 16; ++i)
-            x[i] = state[i];
-
-        for (int i = 0; i < 10; ++i)
-        {  // 10 double rounds
-            QUARTER_ROUND(x[0], x[4], x[8], x[12]);
-            QUARTER_ROUND(x[1], x[5], x[9], x[13]);
-            QUARTER_ROUND(x[2], x[6], x[10], x[14]);
-            QUARTER_ROUND(x[3], x[7], x[11], x[15]);
-            QUARTER_ROUND(x[0], x[5], x[10], x[15]);
-            QUARTER_ROUND(x[1], x[6], x[11], x[12]);
-            QUARTER_ROUND(x[2], x[7], x[8], x[13]);
-            QUARTER_ROUND(x[3], x[4], x[9], x[14]);
-        }
-
-        memcpy(out, &x[0], 16);
-        memcpy(out + 16, &x[12], 16);
+        chacha20_block(state, keystream_block);
+        size_t n = (len < 64) ? len : 64;
+        // 从对齐的uint32_t缓冲区转换为uint8_t指针是安全的
+        const uint8_t* block_bytes = (const uint8_t*)keystream_block;
+        for (size_t i = 0; i < n; ++i)
+            out[i] = in[i] ^ block_bytes[i];
+        in += n;
+        out += n;
+        len -= n;
+        state[12]++;
     }
+}
 
-    void NO_IC_INSTRUMENT chacha20_crypt(const uint8_t key[32],
-                                         const uint8_t nonce[12],
-                                         uint32_t counter, const uint8_t *in,
-                                         uint8_t *out, size_t len)
+// Internal Poly1305 state and core functions
+void NO_IC_INSTRUMENT poly1305_mac(const uint8_t* msg, size_t len,
+                                   const uint8_t key[32], uint8_t tag[16])
+{
+    // Correct implementation of Poly1305 based on RFC 8439 using a 26-bit limb
+    // representation.
+
+    // 1. Load and clamp `r` from the first 16 bytes of the key.
+    uint8_t r_bytes[16];
+    memcpy(r_bytes, key, 16);
+
+    // Apply clamping masks as per RFC 8439.
+    r_bytes[3] &= 15;
+    r_bytes[7] &= 15;
+    r_bytes[11] &= 15;
+    r_bytes[15] &= 15;
+    r_bytes[4] &= 252;
+    r_bytes[8] &= 252;
+    r_bytes[12] &= 252;
+
+    uint32_t r_le[4];
+    memcpy(r_le, r_bytes, 16);
+
+    // Load clamped key into 26-bit limbs.
+    uint32_t r[5];
+    r[0] = (r_le[0]) & 0x03ffffff;
+    r[1] = (r_le[0] >> 26 | r_le[1] << 6) & 0x03ffffff;
+    r[2] = (r_le[1] >> 20 | r_le[2] << 12) & 0x03ffffff;
+    r[3] = (r_le[2] >> 14 | r_le[3] << 18) & 0x03ffffff;
+    r[4] = (r_le[3] >> 8);
+
+    // 2. Initialize accumulator `h` and other variables.
+    uint32_t h[5] = {0};
+    uint64_t d[5];
+    uint64_t c;
+
+    // 3. Process message in 16-byte blocks.
+    while (len > 0)
     {
-        uint32_t state[16];
-        state[0] = 0x61707865;
-        state[1] = 0x3320646e;
-        state[2] = 0x79622d32;
-        state[3] = 0x6b206574;
+        size_t n = (len < 16) ? len : 16;
+        uint8_t block[17] = {0};  // Zero-initialize to prevent reading garbage.
+        memcpy(block, msg, n);
+        block[n] = 1;  // Pad with 1 byte.
 
-        // 使用 memcpy 以避免严格别名问题。
-        // 这假定主机是小端架构，这也是ChaCha20算法本身的要求。
-        memcpy(&state[4], key, 32);
-        state[12] = counter;
-        memcpy(&state[13], nonce, 12);
+        // Load message block and add to accumulator `h`.
+        uint32_t t[4];
+        memcpy(t, block, 16);
+        h[0] += (t[0]) & 0x03ffffff;
+        h[1] += (t[0] >> 26 | t[1] << 6) & 0x03ffffff;
+        h[2] += (t[1] >> 20 | t[2] << 12) & 0x03ffffff;
+        h[3] += (t[2] >> 14 | t[3] << 18) & 0x03ffffff;
+        h[4] += (t[3] >> 8) | ((uint32_t)block[16] << 24);
 
-        uint32_t keystream_block[16];  // 使用正确对齐的缓冲区以避免严格别名问题
-        while (len > 0)
+        // Field multiplication: h = (h * r) % p
+        for (int i = 0; i < 5; ++i)
         {
-            chacha20_block(state, keystream_block);
-            size_t n = (len < 64) ? len : 64;
-            // 从对齐的uint32_t缓冲区转换为uint8_t指针是安全的
-            const uint8_t *block_bytes = (const uint8_t *)keystream_block;
-            for (size_t i = 0; i < n; ++i)
-                out[i] = in[i] ^ block_bytes[i];
-            in += n;
-            out += n;
-            len -= n;
-            state[12]++;
-        }
-    }
-
-    // Internal Poly1305 state and core functions
-    void NO_IC_INSTRUMENT poly1305_mac(const uint8_t *msg, size_t len,
-                                       const uint8_t key[32], uint8_t tag[16])
-    {
-        // Correct implementation of Poly1305 based on RFC 8439 using a 26-bit limb
-        // representation.
-
-        // 1. Load and clamp `r` from the first 16 bytes of the key.
-        uint8_t r_bytes[16];
-        memcpy(r_bytes, key, 16);
-
-        // Apply clamping masks as per RFC 8439.
-        r_bytes[3] &= 15;
-        r_bytes[7] &= 15;
-        r_bytes[11] &= 15;
-        r_bytes[15] &= 15;
-        r_bytes[4] &= 252;
-        r_bytes[8] &= 252;
-        r_bytes[12] &= 252;
-
-        uint32_t r_le[4];
-        memcpy(r_le, r_bytes, 16);
-
-        // Load clamped key into 26-bit limbs.
-        uint32_t r[5];
-        r[0] = (r_le[0]) & 0x03ffffff;
-        r[1] = (r_le[0] >> 26 | r_le[1] << 6) & 0x03ffffff;
-        r[2] = (r_le[1] >> 20 | r_le[2] << 12) & 0x03ffffff;
-        r[3] = (r_le[2] >> 14 | r_le[3] << 18) & 0x03ffffff;
-        r[4] = (r_le[3] >> 8);
-
-        // 2. Initialize accumulator `h` and other variables.
-        uint32_t h[5] = {0};
-        uint64_t d[5];
-        uint64_t c;
-
-        // 3. Process message in 16-byte blocks.
-        while (len > 0)
-        {
-            size_t n = (len < 16) ? len : 16;
-            uint8_t block[17] = {0};  // Zero-initialize to prevent reading garbage.
-            memcpy(block, msg, n);
-            block[n] = 1;  // Pad with 1 byte.
-
-            // Load message block and add to accumulator `h`.
-            uint32_t t[4];
-            memcpy(t, block, 16);
-            h[0] += (t[0]) & 0x03ffffff;
-            h[1] += (t[0] >> 26 | t[1] << 6) & 0x03ffffff;
-            h[2] += (t[1] >> 20 | t[2] << 12) & 0x03ffffff;
-            h[3] += (t[2] >> 14 | t[3] << 18) & 0x03ffffff;
-            h[4] += (t[3] >> 8) | ((uint32_t)block[16] << 24);
-
-            // Field multiplication: h = (h * r) % p
-            for (int i = 0; i < 5; ++i)
+            d[i] = 0;
+            for (int j = 0; j < 5; ++j)
             {
-                d[i] = 0;
-                for (int j = 0; j < 5; ++j)
+                if (i >= j)
                 {
-                    if (i >= j)
-                    {
-                        d[i] += (uint64_t)h[j] * r[i - j];
-                    }
-                    else
-                    {
-                        d[i] += (uint64_t)h[j] * r[5 + i - j] * 5;
-                    }
+                    d[i] += (uint64_t)h[j] * r[i - j];
+                }
+                else
+                {
+                    d[i] += (uint64_t)h[j] * r[5 + i - j] * 5;
                 }
             }
-
-            // Reduce d (carry propagation).
-            c = 0;
-            for (int i = 0; i < 5; ++i)
-            {
-                d[i] += c;
-                c = d[i] >> 26;
-                h[i] = d[i] & 0x03ffffff;
-            }
-            h[0] += c * 5;
-            c = h[0] >> 26;
-            h[0] &= 0x03ffffff;
-            h[1] += c;
-
-            msg += n;
-            len -= n;
         }
 
-        // 4. Finalization.
-        // Final reduction of h.
-        c = h[1] >> 26;
-        h[1] &= 0x03ffffff;
-        h[2] += c;
-        c = h[2] >> 26;
-        h[2] &= 0x03ffffff;
-        h[3] += c;
-        c = h[3] >> 26;
-        h[3] &= 0x03ffffff;
-        h[4] += c;
-        c = h[4] >> 26;
-        h[4] &= 0x03ffffff;
+        // Reduce d (carry propagation).
+        c = 0;
+        for (int i = 0; i < 5; ++i)
+        {
+            d[i] += c;
+            c = d[i] >> 26;
+            h[i] = d[i] & 0x03ffffff;
+        }
         h[0] += c * 5;
         c = h[0] >> 26;
         h[0] &= 0x03ffffff;
         h[1] += c;
 
-        // Add `s` (the second 16 bytes of the key).
-        uint32_t s_le[4];
-        memcpy(s_le, key + 16, 16);
-        h[0] += (s_le[0]) & 0x03ffffff;
-        h[1] += (s_le[0] >> 26 | s_le[1] << 6) & 0x03ffffff;
-        h[2] += (s_le[1] >> 20 | s_le[2] << 12) & 0x03ffffff;
-        h[3] += (s_le[2] >> 14 | s_le[3] << 18) & 0x03ffffff;
-        h[4] += (s_le[3] >> 8);
-
-        // Final carry after adding `s`.
-        c = h[0] >> 26;
-        h[0] &= 0x03ffffff;
-        h[1] += c;
-        c = h[1] >> 26;
-        h[1] &= 0x03ffffff;
-        h[2] += c;
-        c = h[2] >> 26;
-        h[2] &= 0x03ffffff;
-        h[3] += c;
-        c = h[3] >> 26;
-        h[3] &= 0x03ffffff;
-        h[4] += c;
-
-        // Serialize the accumulator `h` into the 16-byte tag.
-        uint32_t tag_out[4];
-        tag_out[0] = h[0] | (h[1] << 26);
-        tag_out[1] = (h[1] >> 6) | (h[2] << 20);
-        tag_out[2] = (h[2] >> 12) | (h[3] << 14);
-        tag_out[3] = (h[3] >> 18) | (h[4] << 8);
-        memcpy(tag, tag_out, 16);
+        msg += n;
+        len -= n;
     }
 
-    }  // anonymous namespace
+    // 4. Finalization.
+    // Final reduction of h.
+    c = h[1] >> 26;
+    h[1] &= 0x03ffffff;
+    h[2] += c;
+    c = h[2] >> 26;
+    h[2] &= 0x03ffffff;
+    h[3] += c;
+    c = h[3] >> 26;
+    h[3] &= 0x03ffffff;
+    h[4] += c;
+    c = h[4] >> 26;
+    h[4] &= 0x03ffffff;
+    h[0] += c * 5;
+    c = h[0] >> 26;
+    h[0] &= 0x03ffffff;
+    h[1] += c;
 
-    // Implementation of the header-declared functions
-    void NO_IC_INSTRUMENT xchacha20_poly1305_encrypt(
-            const std::vector<uint8_t> &key, const std::vector<uint8_t> &nonce,
-            const std::vector<uint8_t> &aad, const std::vector<uint8_t> &plaintext,
-            std::vector<uint8_t> &ciphertext, std::vector<uint8_t> &tag)
+    // Add `s` (the second 16 bytes of the key).
+    uint32_t s_le[4];
+    memcpy(s_le, key + 16, 16);
+    h[0] += (s_le[0]) & 0x03ffffff;
+    h[1] += (s_le[0] >> 26 | s_le[1] << 6) & 0x03ffffff;
+    h[2] += (s_le[1] >> 20 | s_le[2] << 12) & 0x03ffffff;
+    h[3] += (s_le[2] >> 14 | s_le[3] << 18) & 0x03ffffff;
+    h[4] += (s_le[3] >> 8);
+
+    // Final carry after adding `s`.
+    c = h[0] >> 26;
+    h[0] &= 0x03ffffff;
+    h[1] += c;
+    c = h[1] >> 26;
+    h[1] &= 0x03ffffff;
+    h[2] += c;
+    c = h[2] >> 26;
+    h[2] &= 0x03ffffff;
+    h[3] += c;
+    c = h[3] >> 26;
+    h[3] &= 0x03ffffff;
+    h[4] += c;
+
+    // Serialize the accumulator `h` into the 16-byte tag.
+    uint32_t tag_out[4];
+    tag_out[0] = h[0] | (h[1] << 26);
+    tag_out[1] = (h[1] >> 6) | (h[2] << 20);
+    tag_out[2] = (h[2] >> 12) | (h[3] << 14);
+    tag_out[3] = (h[3] >> 18) | (h[4] << 8);
+    memcpy(tag, tag_out, 16);
+}
+
+}  // anonymous namespace
+
+// Implementation of the header-declared functions
+void NO_IC_INSTRUMENT xchacha20_poly1305_encrypt(
+        const std::vector<uint8_t>& key, const std::vector<uint8_t>& nonce,
+        const std::vector<uint8_t>& aad, const std::vector<uint8_t>& plaintext,
+        std::vector<uint8_t>& ciphertext, std::vector<uint8_t>& tag)
+{
+    ciphertext.resize(plaintext.size());
+    tag.resize(16);
+
+    uint8_t subkey[32];
+    uint8_t chacha_nonce[12];
+    // 调用新实现的 setup 函数
+    xchacha20_setup(key.data(), nonce.data(), subkey, chacha_nonce);
+
+    uint8_t poly_key[32];
+    // 调用新的 Poly1305 密钥生成函数
+    generate_poly1305_key(subkey, chacha_nonce, poly_key);
+
+    // 使用子密钥和内部 nonce 进行加密
+    chacha20_crypt(subkey, chacha_nonce, 1, plaintext.data(), ciphertext.data(),
+                   plaintext.size());
+
+    // 根据 RFC 8439 Section 2.8 构造 Poly1305 输入 (此部分逻辑正确，保持不变)
+    size_t aad_len = aad.size();
+    size_t ct_len = ciphertext.size();
+    size_t aad_pad_len = (16 - (aad_len % 16)) % 16;
+    size_t ct_pad_len = (16 - (ct_len % 16)) % 16;
+    size_t mac_data_len = aad_len + aad_pad_len + ct_len + ct_pad_len + 16;
+    std::vector<uint8_t> mac_data(mac_data_len, 0);
+
+    // 1. 复制 AAD
+    memcpy(mac_data.data(), aad.data(), aad_len);
+    // 2. 复制密文
+    memcpy(mac_data.data() + aad_len + aad_pad_len, ciphertext.data(), ct_len);
+
+    // 3. 复制 AAD 长度和密文长度 (64位小端整数)
+    uint64_t aad_len_le = aad_len;
+    uint64_t ct_len_le = ct_len;
+    memcpy(mac_data.data() + aad_len + aad_pad_len + ct_len + ct_pad_len,
+           &aad_len_le, 8);
+    memcpy(mac_data.data() + aad_len + aad_pad_len + ct_len + ct_pad_len + 8,
+           &ct_len_le, 8);
+
+    poly1305_mac(mac_data.data(), mac_data.size(), poly_key, tag.data());
+}
+
+extern "C" int NO_IC_INSTRUMENT __aead_xchacha20_poly1305_decrypt(
+        uint8_t* ciphertext, size_t text_len, const uint8_t* aad, size_t aad_len,
+        const uint8_t* key, const uint8_t* nonce, const uint8_t* tag)
+{
+    uint8_t subkey[32];
+    uint8_t chacha_nonce[12];
+    // 调用新实现的 setup 函数
+    xchacha20_setup(key, nonce, subkey, chacha_nonce);
+
+    uint8_t poly_key[32];
+    // 调用新的 Poly1305 密钥生成函数
+    generate_poly1305_key(subkey, chacha_nonce, poly_key);
+
+    uint8_t calculated_tag[16];
+
+    // 构造 Poly1305 输入以验证 MAC (此部分逻辑正确，保持不变)
+    size_t aad_pad_len = (16 - (aad_len % 16)) % 16;
+    size_t ct_pad_len = (16 - (text_len % 16)) % 16;
+    size_t mac_data_len = aad_len + aad_pad_len + text_len + ct_pad_len + 16;
+    uint8_t* mac_data = (uint8_t*)malloc(mac_data_len);
+    if (!mac_data)
     {
-        ciphertext.resize(plaintext.size());
-        tag.resize(16);
-
-        uint8_t subkey[32];
-        uint8_t chacha_nonce[12];
-        // 调用新实现的 setup 函数
-        xchacha20_setup(key.data(), nonce.data(), subkey, chacha_nonce);
-
-        uint8_t poly_key[32];
-        // 调用新的 Poly1305 密钥生成函数
-        generate_poly1305_key(subkey, chacha_nonce, poly_key);
-
-        // 使用子密钥和内部 nonce 进行加密
-        chacha20_crypt(subkey, chacha_nonce, 1, plaintext.data(), ciphertext.data(),
-                       plaintext.size());
-
-        // 根据 RFC 8439 Section 2.8 构造 Poly1305 输入 (此部分逻辑正确，保持不变)
-        size_t aad_len = aad.size();
-        size_t ct_len = ciphertext.size();
-        size_t aad_pad_len = (16 - (aad_len % 16)) % 16;
-        size_t ct_pad_len = (16 - (ct_len % 16)) % 16;
-        size_t mac_data_len = aad_len + aad_pad_len + ct_len + ct_pad_len + 16;
-        std::vector<uint8_t> mac_data(mac_data_len, 0);
-
-        // 1. 复制 AAD
-        memcpy(mac_data.data(), aad.data(), aad_len);
-        // 2. 复制密文
-        memcpy(mac_data.data() + aad_len + aad_pad_len, ciphertext.data(), ct_len);
-
-        // 3. 复制 AAD 长度和密文长度 (64位小端整数)
-        uint64_t aad_len_le = aad_len;
-        uint64_t ct_len_le = ct_len;
-        memcpy(mac_data.data() + aad_len + aad_pad_len + ct_len + ct_pad_len,
-               &aad_len_le, 8);
-        memcpy(mac_data.data() + aad_len + aad_pad_len + ct_len + ct_pad_len + 8,
-               &ct_len_le, 8);
-
-        poly1305_mac(mac_data.data(), mac_data.size(), poly_key, tag.data());
-    }
-
-    extern "C" int NO_IC_INSTRUMENT __aead_xchacha20_poly1305_decrypt(
-            uint8_t *ciphertext, size_t text_len, const uint8_t *aad, size_t aad_len,
-            const uint8_t *key, const uint8_t *nonce, const uint8_t *tag)
-    {
-        uint8_t subkey[32];
-        uint8_t chacha_nonce[12];
-        // 调用新实现的 setup 函数
-        xchacha20_setup(key, nonce, subkey, chacha_nonce);
-
-        uint8_t poly_key[32];
-        // 调用新的 Poly1305 密钥生成函数
-        generate_poly1305_key(subkey, chacha_nonce, poly_key);
-
-        uint8_t calculated_tag[16];
-
-        // 构造 Poly1305 输入以验证 MAC (此部分逻辑正确，保持不变)
-        size_t aad_pad_len = (16 - (aad_len % 16)) % 16;
-        size_t ct_pad_len = (16 - (text_len % 16)) % 16;
-        size_t mac_data_len = aad_len + aad_pad_len + text_len + ct_pad_len + 16;
-        uint8_t *mac_data = (uint8_t *)malloc(mac_data_len);
-        if (!mac_data)
-        {
-            stack_overflow((uintptr_t)secure_terminate);
-            secure_terminate();
-        }
-
-        // 1. 复制 AAD 和填充
-        memcpy(mac_data, aad, aad_len);
-        memset(mac_data + aad_len, 0, aad_pad_len);
-        // 2. 复制密文和填充
-        memcpy(mac_data + aad_len + aad_pad_len, ciphertext, text_len);
-        memset(mac_data + aad_len + aad_pad_len + text_len, 0, ct_pad_len);
-
-        // 3. 复制 AAD 长度和密文长度
-        uint64_t aad_len_le = aad_len;
-        uint64_t ct_len_le = text_len;
-        memcpy(mac_data + aad_len + aad_pad_len + text_len + ct_pad_len,
-               &aad_len_le, 8);
-        memcpy(mac_data + aad_len + aad_pad_len + text_len + ct_pad_len + 8,
-               &ct_len_le, 8);
-
-        poly1305_mac(mac_data, mac_data_len, poly_key, calculated_tag);
-        free(mac_data);
-
-        // 恒定时间比较标签
-        int diff = 0;
-        for (int i = 0; i < 16; ++i)
-        {
-            diff |= tag[i] ^ calculated_tag[i];
-        }
-
-        if (diff != 0)
-        {
-            // 认证失败！检测到篡改。
-            stack_overflow((uintptr_t)secure_terminate);
-            secure_terminate();
-        }
-
-        // 认证成功，使用子密钥和内部 nonce 原地解密
-        chacha20_crypt(subkey, chacha_nonce, 1, ciphertext, ciphertext, text_len);
-        return 1;
-    }
-    // =========================================================================================
-    //  Secure String Management (Refactored to REMOVE std::vector)
-    // =========================================================================================
-
-#define STR_BUFFER_SLOTS 8
-
-    // 简单的 C 风格缓冲区封装，替代 std::vector
-    struct SimpleBuffer
-    {
-        uint8_t *ptr;
-        size_t cap;
-
-        void init()
-        {
-            ptr = nullptr;
-            cap = 0;
-        }
-
-        void ensure_capacity(size_t needed)
-        {
-            if (needed > cap)
-            {
-                size_t new_cap = (needed < 64) ? 64 : (needed * 2);
-                // 对齐计算
-                if (new_cap % 16 != 0) new_cap += (16 - (new_cap % 16));
-
-                uint8_t *new_ptr = (uint8_t *)realloc(ptr, new_cap);
-                if (!new_ptr) secure_terminate();
-                ptr = new_ptr;
-                cap = new_cap;
-            }
-        }
-
-        void cleanup()
-        {
-            if (ptr)
-            {
-                // 安全擦除
-                volatile uint8_t *p = ptr;
-                for (size_t i = 0; i < cap; ++i) p[i] = 0;
-                free(ptr);
-            }
-            init();
-        }
-    };
-
-    struct ThreadLocalPool
-    {
-        SimpleBuffer buffers[STR_BUFFER_SLOTS];
-        int current_index = 0;
-
-        ThreadLocalPool()
-        {
-            for (int i = 0; i < STR_BUFFER_SLOTS; ++i) buffers[i].init();
-        }
-        // thread_local 对象的析构会引入 __cxa_thread_atexit，可能导致依赖问题。
-        // 但作为静态线程局部变量，我们通常依赖 OS 回收进程内存。
-        // 如果需要严谨内存管理，可以保留析构函数。
-        ~ThreadLocalPool()
-        {
-            for (int i = 0; i < STR_BUFFER_SLOTS; ++i) buffers[i].cleanup();
-        }
-    };
-
-    static thread_local ThreadLocalPool tls_str_pool;
-
-    // MBA Key recovery
-    FORCE_INLINE static void NO_IC_INSTRUMENT mba_recover_key(const uint8_t *param1, const uint8_t *param2, uint8_t *out_key)
-    {
-        for (int i = 0; i < 32; ++i)
-        {
-            uint8_t a = param1[i];
-            uint8_t b = param2[i];
-            out_key[i] = (a ^ b) - 2 * (~a & b);
-        }
-    }
-
-    // 核心解密函数
-    extern "C" char *NO_IC_INSTRUMENT __get_enc_str(
-            const uint8_t *ciphertext, size_t ct_len,
-            const uint8_t *aad, size_t aad_len,
-            const uint8_t *tag,
-            const uint8_t *nonce,
-            const uint8_t *key_p1, const uint8_t *key_p2)
-    {
-        // 1. 获取缓冲区
-        int idx = tls_str_pool.current_index;
-        tls_str_pool.current_index = (idx + 1) % STR_BUFFER_SLOTS;
-
-        SimpleBuffer &buf = tls_str_pool.buffers[idx];
-
-        // 2. 确保空间并初始化
-        buf.ensure_capacity(ct_len + 1);
-
-        // 3. 擦除旧数据 (仅擦除将要使用的部分，或者这里选择直接覆盖)
-        // 注意：realloc 可能已经拷贝了旧数据，但我们不在乎，我们马上要覆盖
-
-        // 4. 恢复密钥 (MBA)
-        uint8_t key[32];
-        mba_recover_key(key_p1, key_p2, key);
-
-        // 5. 设置 XChaCha20-Poly1305
-        uint8_t subkey[32], chacha_nonce[12], poly_key[32];
-        xchacha20_setup(key, nonce, subkey, chacha_nonce);
-        generate_poly1305_key(subkey, chacha_nonce, poly_key);
-
-        // 6. 验证 Tag
-        // 为了避免 malloc，我们可以在栈上分块计算 Poly1305，或者使用之前 SimpleBuffer 扩容后的空间？
-        // 最简单的方法是使用 malloc，这不会引入 std::vector 的递归问题。
-        size_t aad_pad = (16 - (aad_len % 16)) % 16;
-        size_t ct_pad = (16 - (ct_len % 16)) % 16;
-        size_t mac_len = aad_len + aad_pad + ct_len + ct_pad + 16;
-
-        uint8_t *mac_data = (uint8_t *)malloc(mac_len);
-        if (!mac_data) secure_terminate();
-
-        memcpy(mac_data, aad, aad_len);
-        memset(mac_data + aad_len, 0, aad_pad);
-        memcpy(mac_data + aad_len + aad_pad, ciphertext, ct_len);
-        memset(mac_data + aad_len + aad_pad + ct_len, 0, ct_pad);
-        uint64_t lens[2] = {(uint64_t)aad_len, (uint64_t)ct_len};
-        memcpy(mac_data + aad_len + aad_pad + ct_len + ct_pad, lens, 16);
-
-        uint8_t calc_tag[16];
-        poly1305_mac(mac_data, mac_len, poly_key, calc_tag);
-        free(mac_data);
-
-        int diff = 0;
-        for (int i = 0; i < 16; ++i) diff |= tag[i] ^ calc_tag[i];
-        if (diff != 0) secure_terminate();
-
-        // 7. 解密到 SimpleBuffer
-        // 我们直接解密密文到 buf.ptr
-        chacha20_crypt(subkey, chacha_nonce, 1, ciphertext, buf.ptr, ct_len);
-
-        // 8. Null 结尾
-        buf.ptr[ct_len] = '\0';
-
-        // 9. 清理栈密钥
-        volatile uint8_t *pk = key;
-        for (int i = 0; i < 32; ++i) pk[i] = 0;
-
-        return (char *)buf.ptr;
-    }
-
-    extern "C" [[noreturn]] void NO_IC_INSTRUMENT __tsx_tamper_handler()
-    {
-        // 当事务中止时，表明可能存在调试、Hook 或其他形式的篡改。
+        stack_overflow((uintptr_t)secure_terminate);
         secure_terminate();
     }
 
-    // --- 1. 定义 LLD 插件填充的数据结构和占位符 ---
+    // 1. 复制 AAD 和填充
+    memcpy(mac_data, aad, aad_len);
+    memset(mac_data + aad_len, 0, aad_pad_len);
+    // 2. 复制密文和填充
+    memcpy(mac_data + aad_len + aad_pad_len, ciphertext, text_len);
+    memset(mac_data + aad_len + aad_pad_len + text_len, 0, ct_pad_len);
 
-    // 在文件顶部，更新结构体定义
+    // 3. 复制 AAD 长度和密文长度
+    uint64_t aad_len_le = aad_len;
+    uint64_t ct_len_le = text_len;
+    memcpy(mac_data + aad_len + aad_pad_len + text_len + ct_pad_len,
+           &aad_len_le, 8);
+    memcpy(mac_data + aad_len + aad_pad_len + text_len + ct_pad_len + 8,
+           &ct_len_le, 8);
 
-    // 加密哈希的结构体
-    struct encrypted_hash
+    poly1305_mac(mac_data, mac_data_len, poly_key, calculated_tag);
+    free(mac_data);
+
+    // 恒定时间比较标签
+    int diff = 0;
+    for (int i = 0; i < 16; ++i)
     {
-        uint8_t ciphertext[BLAKE3_OUT_LEN];  // 加密后的哈希
-        uint8_t nonce[24];                   // XChaCha20 nonce (24字节)
-        uint8_t tag[16];                     // Poly1305 认证标签
-    };
-
-    // 更新函数信息结构体，使用加密的哈希
-    struct protected_func_info
-    {
-        const void *addr;         // 函数在内存中的起始地址
-        uint64_t size;            // 函数的大小（字节）
-        encrypted_hash enc_hash;  // 加密的函数哈希
-    };
-
-    // 声明由 LLD 插件填充的外部全局变量
-    extern "C"
-    {
-        // 为这些符号提供弱定义，避免链接时未定义符号错误
-        // 这些符号会在运行时被 LLVM Pass 创建的实际符号覆盖
-
-        __attribute__((weak)) encrypted_hash __text_section_encrypted_hash;
-
-        __attribute__((
-                weak)) protected_func_info __protected_funcs_info_table[1] = {};
-
-        __attribute__((weak)) uint8_t __integrity_check_key[32] = {};
+        diff |= tag[i] ^ calculated_tag[i];
     }
 
-    // --- REVISED: 运行时解析节区大小的函数 ---
-    static size_t NO_IC_INSTRUMENT get_functable_size()
+    if (diff != 0)
     {
-        // 使用静态变量缓存结果，确保解析只执行一次
-        static size_t cached_size = 0;
-        if (cached_size > 0)
+        // 认证失败！检测到篡改。
+        stack_overflow((uintptr_t)secure_terminate);
+        secure_terminate();
+    }
+
+    // 认证成功，使用子密钥和内部 nonce 原地解密
+    chacha20_crypt(subkey, chacha_nonce, 1, ciphertext, ciphertext, text_len);
+    return 1;
+}
+// =========================================================================================
+//  Secure String Management (Refactored to REMOVE std::vector)
+// =========================================================================================
+
+#define STR_BUFFER_SLOTS 8
+
+// 简单的 C 风格缓冲区封装，替代 std::vector
+struct SimpleBuffer
+{
+    uint8_t* ptr;
+    size_t cap;
+
+    void init()
+    {
+        ptr = nullptr;
+        cap = 0;
+    }
+
+    void ensure_capacity(size_t needed)
+    {
+        if (needed > cap)
         {
-            return cached_size;
+            size_t new_cap = (needed < 64) ? 64 : (needed * 2);
+            // 对齐计算
+            if (new_cap % 16 != 0) new_cap += (16 - (new_cap % 16));
+
+            uint8_t* new_ptr = (uint8_t*)realloc(ptr, new_cap);
+            if (!new_ptr) secure_terminate();
+            ptr = new_ptr;
+            cap = new_cap;
         }
+    }
+
+    void cleanup()
+    {
+        if (ptr)
+        {
+            // 安全擦除
+            volatile uint8_t* p = ptr;
+            for (size_t i = 0; i < cap; ++i) p[i] = 0;
+            free(ptr);
+        }
+        init();
+    }
+};
+
+struct ThreadLocalPool
+{
+    SimpleBuffer buffers[STR_BUFFER_SLOTS];
+    int current_index = 0;
+
+    ThreadLocalPool()
+    {
+        for (int i = 0; i < STR_BUFFER_SLOTS; ++i) buffers[i].init();
+    }
+    // thread_local 对象的析构会引入 __cxa_thread_atexit，可能导致依赖问题。
+    // 但作为静态线程局部变量，我们通常依赖 OS 回收进程内存。
+    // 如果需要严谨内存管理，可以保留析构函数。
+    ~ThreadLocalPool()
+    {
+        for (int i = 0; i < STR_BUFFER_SLOTS; ++i) buffers[i].cleanup();
+    }
+};
+
+static thread_local ThreadLocalPool tls_str_pool;
+
+// MBA Key recovery
+FORCE_INLINE static void NO_IC_INSTRUMENT mba_recover_key(const uint8_t* param1, const uint8_t* param2, uint8_t* out_key)
+{
+    for (int i = 0; i < 32; ++i)
+    {
+        uint8_t a = param1[i];
+        uint8_t b = param2[i];
+        out_key[i] = (a ^ b) - 2 * (~a & b);
+    }
+}
+
+// 核心解密函数
+extern "C" char* NO_IC_INSTRUMENT __get_enc_str(
+        const uint8_t* ciphertext, size_t ct_len,
+        const uint8_t* aad, size_t aad_len,
+        const uint8_t* tag,
+        const uint8_t* nonce,
+        const uint8_t* key_p1, const uint8_t* key_p2)
+{
+    // 1. 获取缓冲区
+    int idx = tls_str_pool.current_index;
+    tls_str_pool.current_index = (idx + 1) % STR_BUFFER_SLOTS;
+
+    SimpleBuffer& buf = tls_str_pool.buffers[idx];
+
+    // 2. 确保空间并初始化
+    buf.ensure_capacity(ct_len + 1);
+
+    // 3. 擦除旧数据 (仅擦除将要使用的部分，或者这里选择直接覆盖)
+    // 注意：realloc 可能已经拷贝了旧数据，但我们不在乎，我们马上要覆盖
+
+    // 4. 恢复密钥 (MBA)
+    uint8_t key[32];
+    mba_recover_key(key_p1, key_p2, key);
+
+    // 5. 设置 XChaCha20-Poly1305
+    uint8_t subkey[32], chacha_nonce[12], poly_key[32];
+    xchacha20_setup(key, nonce, subkey, chacha_nonce);
+    generate_poly1305_key(subkey, chacha_nonce, poly_key);
+
+    // 6. 验证 Tag
+    // 为了避免 malloc，我们可以在栈上分块计算 Poly1305，或者使用之前 SimpleBuffer 扩容后的空间？
+    // 最简单的方法是使用 malloc，这不会引入 std::vector 的递归问题。
+    size_t aad_pad = (16 - (aad_len % 16)) % 16;
+    size_t ct_pad = (16 - (ct_len % 16)) % 16;
+    size_t mac_len = aad_len + aad_pad + ct_len + ct_pad + 16;
+
+    uint8_t* mac_data = (uint8_t*)malloc(mac_len);
+    if (!mac_data) secure_terminate();
+
+    memcpy(mac_data, aad, aad_len);
+    memset(mac_data + aad_len, 0, aad_pad);
+    memcpy(mac_data + aad_len + aad_pad, ciphertext, ct_len);
+    memset(mac_data + aad_len + aad_pad + ct_len, 0, ct_pad);
+    uint64_t lens[2] = {(uint64_t)aad_len, (uint64_t)ct_len};
+    memcpy(mac_data + aad_len + aad_pad + ct_len + ct_pad, lens, 16);
+
+    uint8_t calc_tag[16];
+    poly1305_mac(mac_data, mac_len, poly_key, calc_tag);
+    free(mac_data);
+
+    int diff = 0;
+    for (int i = 0; i < 16; ++i) diff |= tag[i] ^ calc_tag[i];
+    if (diff != 0) secure_terminate();
+
+    // 7. 解密到 SimpleBuffer
+    // 我们直接解密密文到 buf.ptr
+    chacha20_crypt(subkey, chacha_nonce, 1, ciphertext, buf.ptr, ct_len);
+
+    // 8. Null 结尾
+    buf.ptr[ct_len] = '\0';
+
+    // 9. 清理栈密钥
+    volatile uint8_t* pk = key;
+    for (int i = 0; i < 32; ++i) pk[i] = 0;
+
+    return (char*)buf.ptr;
+}
+
+extern "C" [[noreturn]] void NO_IC_INSTRUMENT __tsx_tamper_handler()
+{
+    // 当事务中止时，表明可能存在调试、Hook 或其他形式的篡改。
+    secure_terminate();
+}
+
+// --- 1. 定义 LLD 插件填充的数据结构和占位符 ---
+
+// 在文件顶部，更新结构体定义
+
+// 加密哈希的结构体
+struct encrypted_hash
+{
+    uint8_t ciphertext[BLAKE3_OUT_LEN];  // 加密后的哈希
+    uint8_t nonce[24];                   // XChaCha20 nonce (24字节)
+    uint8_t tag[16];                     // Poly1305 认证标签
+};
+
+// 更新函数信息结构体，使用加密的哈希
+struct protected_func_info
+{
+    const void* addr;         // 函数在内存中的起始地址
+    uint64_t size;            // 函数的大小（字节）
+    encrypted_hash enc_hash;  // 加密的函数哈希
+};
+
+// 声明由 LLD 插件填充的外部全局变量
+extern "C"
+{
+    // 为这些符号提供弱定义，避免链接时未定义符号错误
+    // 这些符号会在运行时被 LLVM Pass 创建的实际符号覆盖
+
+    __attribute__((weak)) encrypted_hash __text_section_encrypted_hash;
+
+    __attribute__((
+            weak)) protected_func_info __protected_funcs_info_table[1] = {};
+
+    __attribute__((weak)) uint8_t __integrity_check_key[32] = {};
+}
+
+// --- REVISED: 运行时解析节区大小的函数 ---
+static size_t NO_IC_INSTRUMENT get_functable_size()
+{
+    // 使用静态变量缓存结果，确保解析只执行一次
+    static size_t cached_size = 0;
+    if (cached_size > 0)
+    {
+        return cached_size;
+    }
 
 #ifdef _WIN32
-        HMODULE base_addr = GetModuleHandle(NULL);
-        if (!base_addr)
-            return 0;
+    HMODULE base_addr = GetModuleHandle(NULL);
+    if (!base_addr)
+        return 0;
 
-        PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)base_addr;
-        if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
-            return 0;
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)base_addr;
+    if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
+        return 0;
 
-        PIMAGE_NT_HEADERS nt_headers =
-                (PIMAGE_NT_HEADERS)((uint8_t *)base_addr + dos_header->e_lfanew);
-        if (nt_headers->Signature != IMAGE_NT_SIGNATURE)
-            return 0;
+    PIMAGE_NT_HEADERS nt_headers =
+            (PIMAGE_NT_HEADERS)((uint8_t*)base_addr + dos_header->e_lfanew);
+    if (nt_headers->Signature != IMAGE_NT_SIGNATURE)
+        return 0;
 
-        PIMAGE_SECTION_HEADER section_header = IMAGE_FIRST_SECTION(nt_headers);
+    PIMAGE_SECTION_HEADER section_header = IMAGE_FIRST_SECTION(nt_headers);
 
-        for (int i = 0; i < nt_headers->FileHeader.NumberOfSections;
-             ++i, ++section_header)
+    for (int i = 0; i < nt_headers->FileHeader.NumberOfSections;
+         ++i, ++section_header)
+    {
+        // 使用 strncmp 安全比较，因为节区名不保证以 null 结尾
+        if (strncmp((const char*)section_header->Name, ".ic_functable",
+                    IMAGE_SIZEOF_SHORT_NAME)
+            == 0)
         {
-            // 使用 strncmp 安全比较，因为节区名不保证以 null 结尾
-            if (strncmp((const char *)section_header->Name, ".ic_functable",
-                        IMAGE_SIZEOF_SHORT_NAME)
-                == 0)
-            {
-                cached_size = section_header->Misc.VirtualSize;
-                return cached_size;
-            }
+            cached_size = section_header->Misc.VirtualSize;
+            return cached_size;
         }
+    }
 #else  // Linux (ELF)
     // --- REVISED Linux implementation: Parse from disk for maximum reliability
     // ---
@@ -1995,7 +2017,7 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
         return 0;
     }
 
-    void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    void* map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
 
     if (map == MAP_FAILED)
@@ -2003,15 +2025,15 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
         return 0;
     }
 
-    const ElfW(Ehdr) *ehdr = (const ElfW(Ehdr) *)map;
-    const ElfW(Shdr) *shdrs =
-            (const ElfW(Shdr) *)((uint8_t *)map + ehdr->e_shoff);
-    const char *sh_strtab =
-            (const char *)((uint8_t *)map + shdrs[ehdr->e_shstrndx].sh_offset);
+    const ElfW(Ehdr)* ehdr = (const ElfW(Ehdr)*)map;
+    const ElfW(Shdr)* shdrs =
+            (const ElfW(Shdr)*)((uint8_t*)map + ehdr->e_shoff);
+    const char* sh_strtab =
+            (const char*)((uint8_t*)map + shdrs[ehdr->e_shstrndx].sh_offset);
 
     for (int i = 0; i < ehdr->e_shnum; ++i)
     {
-        const char *section_name = sh_strtab + shdrs[i].sh_name;
+        const char* section_name = sh_strtab + shdrs[i].sh_name;
         // 链接器可能添加后缀 (如 ",a")，所以我们只检查前缀
         if (strncmp(section_name, ".ic_functable", 13) == 0)
         {
@@ -2024,236 +2046,236 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
     return cached_size;
 #endif
 
-        return 0;  // 未找到
-    }
+    return 0;  // 未找到
+}
 
-    // --- NEW: 全局缓存，用于存储解密后的函数表 ---
-    static std::vector<uint8_t> decrypted_func_table_cache;
-    static std::once_flag func_table_decrypted_flag;
+// --- NEW: 全局缓存，用于存储解密后的函数表 ---
+static std::vector<uint8_t> decrypted_func_table_cache;
+static std::once_flag func_table_decrypted_flag;
 
-    // --- NEW: 解密并缓存整个函数表的函数 ---
-    //     static void NO_IC_INSTRUMENT decrypt_and_cache_func_table()
-    //     {
-    // #ifdef IC_DEBUG
-    //         fprintf(stderr,
-    //                 "[IC-RUNTIME] Decrypting and caching the function table...\n");
-    // #endif
+// --- NEW: 解密并缓存整个函数表的函数 ---
+//     static void NO_IC_INSTRUMENT decrypt_and_cache_func_table()
+//     {
+// #ifdef IC_DEBUG
+//         fprintf(stderr,
+//                 "[IC-RUNTIME] Decrypting and caching the function table...\n");
+// #endif
 
-    //         // 1. 计算 AAD: 它是 .ic_texthash 节内容的 blake3 哈希
-    //         uint8_t aad_data[BLAKE3_OUT_LEN];
-    //         blake3_hasher hasher;
-    //         blake3_hasher_init(&hasher);
-    //         blake3_hasher_update(&hasher, &__text_section_encrypted_hash,
-    //                              sizeof(encrypted_hash));
-    //         blake3_hasher_finalize(&hasher, aad_data, BLAKE3_OUT_LEN);
+//         // 1. 计算 AAD: 它是 .ic_texthash 节内容的 blake3 哈希
+//         uint8_t aad_data[BLAKE3_OUT_LEN];
+//         blake3_hasher hasher;
+//         blake3_hasher_init(&hasher);
+//         blake3_hasher_update(&hasher, &__text_section_encrypted_hash,
+//                              sizeof(encrypted_hash));
+//         blake3_hasher_finalize(&hasher, aad_data, BLAKE3_OUT_LEN);
 
-    // #ifdef IC_DEBUG
-    //         print_bytes("  - AAD for func table (hash of .ic_texthash): ", aad_data,
-    //                     BLAKE3_OUT_LEN);
-    // #endif
+// #ifdef IC_DEBUG
+//         print_bytes("  - AAD for func table (hash of .ic_texthash): ", aad_data,
+//                     BLAKE3_OUT_LEN);
+// #endif
 
-    //         // 2. 从 .ic_functable 中解包数据
-    //         // 格式: [uint64_t plaintext_size][24B nonce][16B tag][ciphertext]
-    //         uint8_t *encrypted_table_data = (uint8_t *)__protected_funcs_info_table;
+//         // 2. 从 .ic_functable 中解包数据
+//         // 格式: [uint64_t plaintext_size][24B nonce][16B tag][ciphertext]
+//         uint8_t *encrypted_table_data = (uint8_t *)__protected_funcs_info_table;
 
-    //         uint64_t plaintext_size;
-    //         memcpy(&plaintext_size, encrypted_table_data, sizeof(uint64_t));
+//         uint64_t plaintext_size;
+//         memcpy(&plaintext_size, encrypted_table_data, sizeof(uint64_t));
 
-    //         const uint8_t *nonce = encrypted_table_data + sizeof(uint64_t);
-    //         const uint8_t *tag = encrypted_table_data + sizeof(uint64_t) + 24;
-    //         const uint8_t *ciphertext =
-    //                 encrypted_table_data + sizeof(uint64_t) + 24 + 16;
-    //         size_t ciphertext_len = plaintext_size;  // 密文长度等于明文长度
+//         const uint8_t *nonce = encrypted_table_data + sizeof(uint64_t);
+//         const uint8_t *tag = encrypted_table_data + sizeof(uint64_t) + 24;
+//         const uint8_t *ciphertext =
+//                 encrypted_table_data + sizeof(uint64_t) + 24 + 16;
+//         size_t ciphertext_len = plaintext_size;  // 密文长度等于明文长度
 
-    //         // --- FIX: 使用新的运行时函数替换 sizeof 来进行大小检查 ---
-    //         size_t allocated_size = get_functable_size();
-    //         size_t needed_size = sizeof(uint64_t) + 24 + 16 + ciphertext_len;
+//         // --- FIX: 使用新的运行时函数替换 sizeof 来进行大小检查 ---
+//         size_t allocated_size = get_functable_size();
+//         size_t needed_size = sizeof(uint64_t) + 24 + 16 + ciphertext_len;
 
-    //         if (allocated_size < needed_size)
-    //         {
-    // #ifdef IC_DEBUG
-    //             fprintf(stderr,
-    //                     "[IC-RUNTIME] !! FATAL: Not enough space allocated for "
-    //                     "the encrypted function table. (Allocated: %zu, Needed: %zu)\n",
-    //                     allocated_size, needed_size);
-    // #endif
-    //             secure_terminate();
-    //         }
+//         if (allocated_size < needed_size)
+//         {
+// #ifdef IC_DEBUG
+//             fprintf(stderr,
+//                     "[IC-RUNTIME] !! FATAL: Not enough space allocated for "
+//                     "the encrypted function table. (Allocated: %zu, Needed: %zu)\n",
+//                     allocated_size, needed_size);
+// #endif
+//             secure_terminate();
+//         }
 
-    //         // 3. 准备解密
-    //         decrypted_func_table_cache.resize(plaintext_size);
-    //         memcpy(decrypted_func_table_cache.data(), ciphertext, ciphertext_len);
+//         // 3. 准备解密
+//         decrypted_func_table_cache.resize(plaintext_size);
+//         memcpy(decrypted_func_table_cache.data(), ciphertext, ciphertext_len);
 
-    //         // 4. 原地解密
-    //         int decrypt_result = __aead_xchacha20_poly1305_decrypt(
-    //                 decrypted_func_table_cache.data(),  // 输入: 密文, 输出: 明文
-    //                 ciphertext_len, aad_data, BLAKE3_OUT_LEN, __integrity_check_key, nonce,
-    //                 tag);
+//         // 4. 原地解密
+//         int decrypt_result = __aead_xchacha20_poly1305_decrypt(
+//                 decrypted_func_table_cache.data(),  // 输入: 密文, 输出: 明文
+//                 ciphertext_len, aad_data, BLAKE3_OUT_LEN, __integrity_check_key, nonce,
+//                 tag);
 
-    //         if (decrypt_result != 1)
-    //         {
-    // #ifdef IC_DEBUG
-    //             fprintf(stderr,
-    //                     "[IC-RUNTIME] !! FATAL: Failed to decrypt the entire "
-    //                     "function table. Tampering detected.\n");
-    // #endif
-    //             secure_terminate();
-    //         }
+//         if (decrypt_result != 1)
+//         {
+// #ifdef IC_DEBUG
+//             fprintf(stderr,
+//                     "[IC-RUNTIME] !! FATAL: Failed to decrypt the entire "
+//                     "function table. Tampering detected.\n");
+// #endif
+//             secure_terminate();
+//         }
 
-    // #ifdef IC_DEBUG
-    //         fprintf(stderr,
-    //                 "[IC-RUNTIME] Function table decrypted successfully. Cached size: "
-    //                 "%zu bytes.\n",
-    //                 decrypted_func_table_cache.size());
-    // #endif
-    //     }
-    static void NO_IC_INSTRUMENT decrypt_and_cache_func_table()
-    {
+// #ifdef IC_DEBUG
+//         fprintf(stderr,
+//                 "[IC-RUNTIME] Function table decrypted successfully. Cached size: "
+//                 "%zu bytes.\n",
+//                 decrypted_func_table_cache.size());
+// #endif
+//     }
+static void NO_IC_INSTRUMENT decrypt_and_cache_func_table()
+{
 #ifdef debug
-        debugprint("[IC-RUNTIME] Decrypting and caching the function table...\n");
+    debugprint("[IC-RUNTIME] Decrypting and caching the function table...\n");
 #endif
 
-        // [1] 环境一致性检查 (防止 TOCTOU)
+    // [1] 环境一致性检查 (防止 TOCTOU)
 #ifndef _WIN32
-        long fd = direct_syscall(257, -100, (long)"/proc/self/exe", 0, 0);
-        if (fd < 0) secure_terminate();
+    long fd = direct_syscall(257, -100, (long)"/proc/self/exe", 0, 0);
+    if (fd < 0) secure_terminate();
 
-        if (!verify_file_inode_matches_memory(fd))
-        {
-#ifdef debug
-            debugprint("[IC-RUNTIME] Inode mismatch during table decryption.\n");
-#endif
-            direct_syscall(3, fd);
-            secure_terminate();
-        }
-        direct_syscall(3, fd);
-#endif
-
-        // [2] 计算 AAD
-        // 使用 __text_section_encrypted_hash 整个结构体作为 AAD
-        uint8_t aad_data[BLAKE3_OUT_LEN];
-        blake3_hasher hasher;
-        blake3_hasher_init(&hasher);
-        blake3_hasher_update(&hasher, &__text_section_encrypted_hash, sizeof(encrypted_hash));
-        blake3_hasher_finalize(&hasher, aad_data, BLAKE3_OUT_LEN);
-
-        // [3] 解包数据
-        uint8_t *encrypted_table_data = (uint8_t *)__protected_funcs_info_table;
-        uint64_t plaintext_size;
-        mini_memcpy(&plaintext_size, encrypted_table_data, sizeof(uint64_t));
-
-        const uint8_t *nonce = encrypted_table_data + sizeof(uint64_t);
-        const uint8_t *tag = encrypted_table_data + sizeof(uint64_t) + 24;
-        const uint8_t *ciphertext = encrypted_table_data + sizeof(uint64_t) + 24 + 16;
-        size_t ciphertext_len = plaintext_size;
-
-        // [4] 安全检查
-        size_t allocated_size = get_functable_size();
-        size_t needed_size = sizeof(uint64_t) + 24 + 16 + ciphertext_len;
-
-        if (allocated_size < needed_size)
-        {
-#ifdef debug
-            debugprint("[IC-RUNTIME] !! FATAL: Not enough space allocated.\n");
-#endif
-            secure_terminate();
-        }
-
-        // [5] 解密
-        decrypted_func_table_cache.resize(plaintext_size);
-        // 使用 mini_memcpy 避免报错
-        mini_memcpy(decrypted_func_table_cache.data(), ciphertext, ciphertext_len);
-
-        int decrypt_result = __aead_xchacha20_poly1305_decrypt(
-                decrypted_func_table_cache.data(),
-                ciphertext_len, aad_data, BLAKE3_OUT_LEN, __integrity_check_key, nonce,
-                tag);
-
-        if (decrypt_result != 1)
-        {
-#ifdef debug
-            debugprint("[IC-RUNTIME] !! FATAL: Function table decryption failed.\n");
-#endif
-            secure_terminate();
-        }
-
-#ifdef debug
-        debugprint("[IC-RUNTIME] Function table decrypted successfully.\n");
-#endif
-    }
-    // --- 2. 静态完整性校验实现 ---
-    static bool NO_IC_INSTRUMENT calculate_text_section_aad(uint8_t *aad_buffer,
-                                                            size_t buffer_len)
+    if (!verify_file_inode_matches_memory(fd))
     {
-        if (buffer_len < sizeof(uint64_t))
-            return false;
+#ifdef debug
+        debugprint("[IC-RUNTIME] Inode mismatch during table decryption.\n");
+#endif
+        direct_syscall(3, fd);
+        secure_terminate();
+    }
+    direct_syscall(3, fd);
+#endif
 
-        long file_size = 0;
-        uint8_t the_byte_val = 0;
+    // [2] 计算 AAD
+    // 使用 __text_section_encrypted_hash 整个结构体作为 AAD
+    uint8_t aad_data[BLAKE3_OUT_LEN];
+    blake3_hasher hasher;
+    blake3_hasher_init(&hasher);
+    blake3_hasher_update(&hasher, &__text_section_encrypted_hash, sizeof(encrypted_hash));
+    blake3_hasher_finalize(&hasher, aad_data, BLAKE3_OUT_LEN);
+
+    // [3] 解包数据
+    uint8_t* encrypted_table_data = (uint8_t*)__protected_funcs_info_table;
+    uint64_t plaintext_size;
+    mini_memcpy(&plaintext_size, encrypted_table_data, sizeof(uint64_t));
+
+    const uint8_t* nonce = encrypted_table_data + sizeof(uint64_t);
+    const uint8_t* tag = encrypted_table_data + sizeof(uint64_t) + 24;
+    const uint8_t* ciphertext = encrypted_table_data + sizeof(uint64_t) + 24 + 16;
+    size_t ciphertext_len = plaintext_size;
+
+    // [4] 安全检查
+    size_t allocated_size = get_functable_size();
+    size_t needed_size = sizeof(uint64_t) + 24 + 16 + ciphertext_len;
+
+    if (allocated_size < needed_size)
+    {
+#ifdef debug
+        debugprint("[IC-RUNTIME] !! FATAL: Not enough space allocated.\n");
+#endif
+        secure_terminate();
+    }
+
+    // [5] 解密
+    decrypted_func_table_cache.resize(plaintext_size);
+    // 使用 mini_memcpy 避免报错
+    mini_memcpy(decrypted_func_table_cache.data(), ciphertext, ciphertext_len);
+
+    int decrypt_result = __aead_xchacha20_poly1305_decrypt(
+            decrypted_func_table_cache.data(),
+            ciphertext_len, aad_data, BLAKE3_OUT_LEN, __integrity_check_key, nonce,
+            tag);
+
+    if (decrypt_result != 1)
+    {
+#ifdef debug
+        debugprint("[IC-RUNTIME] !! FATAL: Function table decryption failed.\n");
+#endif
+        secure_terminate();
+    }
+
+#ifdef debug
+    debugprint("[IC-RUNTIME] Function table decrypted successfully.\n");
+#endif
+}
+// --- 2. 静态完整性校验实现 ---
+static bool NO_IC_INSTRUMENT calculate_text_section_aad(uint8_t* aad_buffer,
+                                                        size_t buffer_len)
+{
+    if (buffer_len < sizeof(uint64_t))
+        return false;
+
+    long file_size = 0;
+    uint8_t the_byte_val = 0;
 
 #ifdef _WIN32
-        char self_path[1024];
-        if (GetModuleFileName(NULL, self_path, sizeof(self_path)) == 0)
-        {
+    char self_path[1024];
+    if (GetModuleFileNameA(NULL, self_path, sizeof(self_path)) == 0)
+    {
 #ifdef IC_DEBUG
-            fprintf(stderr,
-                    "[IC-RUNTIME] !! Failed to get executable path for AAD "
-                    "calculation.\n");
+        fprintf(stderr,
+                "[IC-RUNTIME] !! Failed to get executable path for AAD "
+                "calculation.\n");
 #endif
-            return false;
-        }
+        return false;
+    }
 
-        FILE *f = fopen(self_path, "rb");
-        if (!f)
-        {
+    FILE* f = fopen(self_path, "rb");
+    if (!f)
+    {
 #ifdef IC_DEBUG
-            fprintf(stderr,
-                    "[IC-RUNTIME] !! Failed to open executable file at '%s' for AAD "
-                    "calculation.\n",
-                    self_path);
+        fprintf(stderr,
+                "[IC-RUNTIME] !! Failed to open executable file at '%s' for AAD "
+                "calculation.\n",
+                self_path);
 #endif
-            return false;
-        }
+        return false;
+    }
 
-        fseek(f, 0, SEEK_END);
-        file_size = ftell(f);
-        fseek(f, 0, SEEK_SET);
+    fseek(f, 0, SEEK_END);
+    file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
 
-        if (file_size <= 0)
-        {
-            fclose(f);
-            return false;
-        }
-
-        // 优化: 将文件前半部分读入内存，避免循环 fseek
-        long mid_index = file_size / 2;
-        size_t read_size = mid_index + 1;
-        char *file_buffer = (char *)malloc(read_size);
-        if (!file_buffer)
-        {
-            fclose(f);
-            return false;
-        }
-
-        size_t bytes_read = fread(file_buffer, 1, read_size, f);
+    if (file_size <= 0)
+    {
         fclose(f);
+        return false;
+    }
 
-        if (bytes_read != read_size)
-        {
-            free(file_buffer);
-            return false;
-        }
+    // 优化: 将文件前半部分读入内存，避免循环 fseek
+    long mid_index = file_size / 2;
+    size_t read_size = mid_index + 1;
+    char* file_buffer = (char*)malloc(read_size);
+    if (!file_buffer)
+    {
+        fclose(f);
+        return false;
+    }
 
-        // 在内存中向后搜索
-        for (long i = mid_index; i >= 0; --i)
-        {
-            if (file_buffer[i] != 0)
-            {
-                the_byte_val = (uint8_t)file_buffer[i];
-                break;
-            }
-        }
+    size_t bytes_read = fread(file_buffer, 1, read_size, f);
+    fclose(f);
+
+    if (bytes_read != read_size)
+    {
         free(file_buffer);
+        return false;
+    }
+
+    // 在内存中向后搜索
+    for (long i = mid_index; i >= 0; --i)
+    {
+        if (file_buffer[i] != 0)
+        {
+            the_byte_val = (uint8_t)file_buffer[i];
+            break;
+        }
+    }
+    free(file_buffer);
 
 #else  // Linux - 更高效的实现
     // 1. 直接打开 /proc/self/exe 获取文件描述符
@@ -2289,7 +2311,7 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
     // 3. 一次性将文件前半部分读入内存
     long mid_index = file_size / 2;
     size_t read_size = mid_index + 1;
-    char *file_buffer = (char *)malloc(read_size);
+    char* file_buffer = (char*)malloc(read_size);
     if (!file_buffer)
     {
         close(fd);
@@ -2322,150 +2344,170 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
     free(file_buffer);
 #endif
 
-        // 对两个平台通用的 AAD 计算和收尾工作
-        uint64_t aad_value = (uint64_t)the_byte_val * file_size;
+    // 对两个平台通用的 AAD 计算和收尾工作
+    uint64_t aad_value = (uint64_t)the_byte_val * file_size;
 #ifdef IC_DEBUG
-        fprintf(stderr,
-                "[IC-RUNTIME] Calculated AAD for .text: byte=0x%x, size=%ld, "
-                "aad_val=%llu\n",
-                the_byte_val, file_size, (unsigned long long)aad_value);
+    fprintf(stderr,
+            "[IC-RUNTIME] Calculated AAD for .text: byte=0x%x, size=%ld, "
+            "aad_val=%llu\n",
+            the_byte_val, file_size, (unsigned long long)aad_value);
 #endif
 
-        memcpy(aad_buffer, &aad_value, sizeof(uint64_t));
-        return true;
-    }
-    // 在完整性校验实现之前添加这个辅助函数
+    memcpy(aad_buffer, &aad_value, sizeof(uint64_t));
+    return true;
+}
+// 在完整性校验实现之前添加这个辅助函数
 
-    // 解密并验证哈希的辅助函数
-    static bool NO_IC_INSTRUMENT decrypt_and_verify_hash(
-            const encrypted_hash &enc_hash, const uint8_t *calculated_hash,
-            size_t hash_len, const uint8_t *aad, size_t aad_len)
+// 解密并验证哈希的辅助函数
+static bool NO_IC_INSTRUMENT decrypt_and_verify_hash(
+        const encrypted_hash& enc_hash, const uint8_t* calculated_hash,
+        size_t hash_len, const uint8_t* aad, size_t aad_len)
+{
+#ifdef IC_DEBUG
+    fprintf(stderr, "[IC-RUNTIME] decrypt_and_verify_hash called.\n");
+#endif
+    // 1. 使用 XChaCha20-Poly1305 解密存储的哈希
+    uint8_t decrypted_hash[BLAKE3_OUT_LEN];
+    memcpy(decrypted_hash, enc_hash.ciphertext, BLAKE3_OUT_LEN);
+
+    // --- Pass the AAD to the decryption function ---
+    // 调用解密函数
+    int decrypt_result = __aead_xchacha20_poly1305_decrypt(
+            decrypted_hash,         // 输入：密文，输出：明文
+            BLAKE3_OUT_LEN,         // 数据长度
+            aad,                    // AAD
+            aad_len,                // AAD 长度
+            __integrity_check_key,  // 解密密钥
+            enc_hash.nonce,         // nonce
+            enc_hash.tag            // 认证标签
+    );
+
+    // 如果解密失败（认证失败），说明哈希或 AAD 被篡改
+    if (decrypt_result != 1)
     {
 #ifdef IC_DEBUG
-        fprintf(stderr, "[IC-RUNTIME] decrypt_and_verify_hash called.\n");
+        fprintf(stderr, "[IC-RUNTIME] !! Decryption/Authentication FAILED.\n");
+        print_bytes("  - Key:      ", __integrity_check_key, 32);
+        print_bytes("  - Nonce:    ", enc_hash.nonce, 24);
+        print_bytes("  - Tag:      ", enc_hash.tag, 16);
+        print_bytes("  - Cipher:   ", enc_hash.ciphertext, BLAKE3_OUT_LEN);
 #endif
-        // 1. 使用 XChaCha20-Poly1305 解密存储的哈希
-        uint8_t decrypted_hash[BLAKE3_OUT_LEN];
-        memcpy(decrypted_hash, enc_hash.ciphertext, BLAKE3_OUT_LEN);
-
-        // --- Pass the AAD to the decryption function ---
-        // 调用解密函数
-        int decrypt_result = __aead_xchacha20_poly1305_decrypt(
-                decrypted_hash,         // 输入：密文，输出：明文
-                BLAKE3_OUT_LEN,         // 数据长度
-                aad,                    // AAD
-                aad_len,                // AAD 长度
-                __integrity_check_key,  // 解密密钥
-                enc_hash.nonce,         // nonce
-                enc_hash.tag            // 认证标签
-        );
-
-        // 如果解密失败（认证失败），说明哈希或 AAD 被篡改
-        if (decrypt_result != 1)
-        {
-#ifdef IC_DEBUG
-            fprintf(stderr, "[IC-RUNTIME] !! Decryption/Authentication FAILED.\n");
-            print_bytes("  - Key:      ", __integrity_check_key, 32);
-            print_bytes("  - Nonce:    ", enc_hash.nonce, 24);
-            print_bytes("  - Tag:      ", enc_hash.tag, 16);
-            print_bytes("  - Cipher:   ", enc_hash.ciphertext, BLAKE3_OUT_LEN);
-#endif
-            return false;
-        }
-
-#ifdef IC_DEBUG
-        fprintf(stderr, "[IC-RUNTIME] Decryption/Authentication successful.\n");
-        print_bytes("  - Decrypted Hash: ", decrypted_hash, BLAKE3_OUT_LEN);
-        print_bytes("  - Calculated Hash:", calculated_hash, hash_len);
-#endif
-
-        // 2. 解密成功，现在比较哈希
-        // 使用恒定时间比较防止时序攻击
-        int diff = 0;
-        for (size_t i = 0; i < hash_len && i < BLAKE3_OUT_LEN; ++i)
-        {
-            diff |= calculated_hash[i] ^ decrypted_hash[i];
-        }
-
-#ifdef IC_DEBUG
-        if (diff != 0)
-        {
-            fprintf(stderr, "[IC-RUNTIME] !! HASH MISMATCH.\n");
-        }
-        else
-        {
-            fprintf(stderr, "[IC-RUNTIME] Hash match OK.\n");
-        }
-#endif
-
-        return (diff == 0);
+        return false;
     }
+
+#ifdef IC_DEBUG
+    fprintf(stderr, "[IC-RUNTIME] Decryption/Authentication successful.\n");
+    print_bytes("  - Decrypted Hash: ", decrypted_hash, BLAKE3_OUT_LEN);
+    print_bytes("  - Calculated Hash:", calculated_hash, hash_len);
+#endif
+
+    // 2. 解密成功，现在比较哈希
+    // 使用恒定时间比较防止时序攻击
+    int diff = 0;
+    for (size_t i = 0; i < hash_len && i < BLAKE3_OUT_LEN; ++i)
+    {
+        diff |= calculated_hash[i] ^ decrypted_hash[i];
+    }
+
+#ifdef IC_DEBUG
+    if (diff != 0)
+    {
+        fprintf(stderr, "[IC-RUNTIME] !! HASH MISMATCH.\n");
+    }
+    else
+    {
+        fprintf(stderr, "[IC-RUNTIME] Hash match OK.\n");
+    }
+#endif
+
+    return (diff == 0);
+}
 
 #ifdef _WIN32
-    static int NO_IC_INSTRUMENT base_addr_callback(struct dl_phdr_info * info,
-                                                   size_t size, void *data)
+/* static int NO_IC_INSTRUMENT base_addr_callback(struct dl_phdr_info* info,
+                                               size_t size, void* data)
+{
+    // 回调的第一个对象就是主程序本身。我们捕获它的基地址并停止迭代。
+    *(uintptr_t*)data = info->dlpi_addr;
+    return 1;  // 返回非零值以停止迭代
+} */
+// Windows (PE) 平台的 .text 节区查找与校验
+static uintptr_t NO_IC_INSTRUMENT get_program_base_address()
+{
+#if defined(__x86_64__) || defined(_M_X64)
+    // x64: PEB is at GS:[0x60]
+    // ImageBaseAddress is at PEB + 0x10
+    unsigned long long peb;
+    // 使用内联汇编直接读取 GS 段寄存器获取 PEB 地址，绕过 API 调用
+    asm volatile("movq %%gs:0x60, %0" : "=r"(peb));
+    return *(uintptr_t*)(peb + 0x10);
+#elif defined(_M_IX86) || defined(__i386__)
+    // x86: PEB is at FS:[0x30]
+    // ImageBaseAddress is at PEB + 0x08
+    unsigned long peb;
+    asm volatile("movl %%fs:0x30, %0" : "=r"(peb));
+    return *(uintptr_t*)(peb + 0x08);
+#else
+    // Fallback for ARM/ARM64 on Windows
+    return (uintptr_t)GetModuleHandleA(NULL);
+#endif
+}
+static void NO_IC_INSTRUMENT verify_text_section_integrity_windows()
+{
+    // 获取当前模块（即可执行文件自身）的基地址
+    HMODULE base_addr = (HMODULE)get_program_base_address();
+    if (!base_addr)
     {
-        // 回调的第一个对象就是主程序本身。我们捕获它的基地址并停止迭代。
-        *(uintptr_t *)data = info->dlpi_addr;
-        return 1;  // 返回非零值以停止迭代
-    }
-    // Windows (PE) 平台的 .text 节区查找与校验
-    static void NO_IC_INSTRUMENT verify_text_section_integrity_windows()
-    {
-        // 获取当前模块（即可执行文件自身）的基地址
-        HMODULE base_addr = GetModuleHandle(NULL);
-        if (!base_addr)
-        {
-            secure_terminate();
-        }
-
-        PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)base_addr;
-        PIMAGE_NT_HEADERS nt_headers =
-                (PIMAGE_NT_HEADERS)((uint8_t *)base_addr + dos_header->e_lfanew);
-
-        // 定位到节区头表
-        PIMAGE_SECTION_HEADER section_header = IMAGE_FIRST_SECTION(nt_headers);
-
-        // 遍历所有节区，寻找 .text 节区
-        for (int i = 0; i < nt_headers->FileHeader.NumberOfSections;
-             ++i, ++section_header)
-        {
-            // 使用 strncmp 比较节区名，".text" 是标准名称
-            if (strncmp((const char *)section_header->Name, ".text",
-                        IMAGE_SIZEOF_SHORT_NAME)
-                == 0)
-            {
-                const void *text_section_start =
-                        (uint8_t *)base_addr + section_header->VirtualAddress;
-                size_t text_section_size = section_header->Misc.VirtualSize;
-
-                // 计算当前 .text 节区的哈希
-                uint8_t calculated_hash[BLAKE3_OUT_LEN];
-                blake3_hasher hasher;
-                blake3_hasher_init(&hasher);
-                blake3_hasher_update(&hasher, text_section_start, text_section_size);
-                blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
-
-                // --- MODIFIED: Calculate AAD from file content and use it for
-                // verification ---
-                uint8_t aad_data[sizeof(uint64_t)];
-                if (!calculate_text_section_aad(aad_data, sizeof(aad_data)))
-                {
-                    secure_terminate();
-                }
-                if (!decrypt_and_verify_hash(__text_section_encrypted_hash,
-                                             calculated_hash, BLAKE3_OUT_LEN, aad_data,
-                                             sizeof(aad_data)))
-                {
-                    secure_terminate();
-                }
-                return;  // 找到并校验完毕，成功返回
-            }
-        }
-
-        // 如果循环结束仍未找到 .text 节区，说明存在异常
         secure_terminate();
     }
+
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)base_addr;
+    PIMAGE_NT_HEADERS nt_headers =
+            (PIMAGE_NT_HEADERS)((uint8_t*)base_addr + dos_header->e_lfanew);
+
+    // 定位到节区头表
+    PIMAGE_SECTION_HEADER section_header = IMAGE_FIRST_SECTION(nt_headers);
+
+    // 遍历所有节区，寻找 .text 节区
+    for (int i = 0; i < nt_headers->FileHeader.NumberOfSections;
+         ++i, ++section_header)
+    {
+        // 使用 strncmp 比较节区名，".text" 是标准名称
+        if (strncmp((const char*)section_header->Name, ".text",
+                    IMAGE_SIZEOF_SHORT_NAME)
+            == 0)
+        {
+            const void* text_section_start =
+                    (uint8_t*)base_addr + section_header->VirtualAddress;
+            size_t text_section_size = section_header->Misc.VirtualSize;
+
+            // 计算当前 .text 节区的哈希
+            uint8_t calculated_hash[BLAKE3_OUT_LEN];
+            blake3_hasher hasher;
+            blake3_hasher_init(&hasher);
+            blake3_hasher_update(&hasher, text_section_start, text_section_size);
+            blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
+
+            // --- MODIFIED: Calculate AAD from file content and use it for
+            // verification ---
+            uint8_t aad_data[sizeof(uint64_t)];
+            if (!calculate_text_section_aad(aad_data, sizeof(aad_data)))
+            {
+                secure_terminate();
+            }
+            if (!decrypt_and_verify_hash(__text_section_encrypted_hash,
+                                         calculated_hash, BLAKE3_OUT_LEN, aad_data,
+                                         sizeof(aad_data)))
+            {
+                secure_terminate();
+            }
+            return;  // 找到并校验完毕，成功返回
+        }
+    }
+
+    // 如果循环结束仍未找到 .text 节区，说明存在异常
+    secure_terminate();
+}
 
 #else  // Linux (ELF) 平台的实现
 
@@ -2498,10 +2540,10 @@ static int NO_IC_INSTRUMENT stack_overflow(uintptr_t a)
 // 替换后的 get_program_base_address
 static uintptr_t NO_IC_INSTRUMENT get_program_base_address()
 {
-        if (!g_maps_parsed)
-        {
-            parse_self_maps();
-        }
+    if (!g_maps_parsed)
+    {
+        parse_self_maps();
+    }
 
     return g_verified_base_addr;
 }
@@ -2559,7 +2601,7 @@ static uintptr_t NO_IC_INSTRUMENT get_program_base_address()
 
 // 计算文件片段的哈希
 static void NO_IC_INSTRUMENT calculate_file_segment_hash(
-        long fd, unsigned long offset, unsigned long size, uint8_t *out_hash)
+        long fd, unsigned long offset, unsigned long size, uint8_t* out_hash)
 {
     blake3_hasher hasher;
     blake3_hasher_init(&hasher);
@@ -2590,7 +2632,7 @@ static void NO_IC_INSTRUMENT calculate_file_segment_hash(
 // 从文件中查找 .text 节的信息
 // 替换原有的 find_text_section_in_file
 static int NO_IC_INSTRUMENT find_executable_segment_in_file(
-        long fd, unsigned long *out_offset, unsigned long *out_filesz, unsigned long *out_memsz)
+        long fd, unsigned long* out_offset, unsigned long* out_filesz, unsigned long* out_memsz)
 {
     MiniElf64_Ehdr ehdr;
     // 1. 读取 ELF 头
@@ -2642,7 +2684,7 @@ static int NO_IC_INSTRUMENT find_executable_segment_in_file(
 //     }
 // }
 
-static bool NO_IC_INSTRUMENT calculate_text_section_aad_syscall(long fd, uint8_t *aad_buffer)
+static bool NO_IC_INSTRUMENT calculate_text_section_aad_syscall(long fd, uint8_t* aad_buffer)
 {
     struct my_kernel_stat st;
     mini_memset(&st, 0, sizeof(st));
@@ -2659,7 +2701,7 @@ static bool NO_IC_INSTRUMENT calculate_text_section_aad_syscall(long fd, uint8_t
 
     // 使用 malloc，因为栈上放不下这么大的 buffer
     // 注意：__aead_xchacha20_poly1305_decrypt 内部也用了 malloc，所以这里用是可以的
-    char *file_buffer = (char *)malloc(read_size);
+    char* file_buffer = (char*)malloc(read_size);
     if (!file_buffer) return false;
 
     // SYS_LSEEK = 8 (Seek to start)
@@ -2712,7 +2754,7 @@ static bool NO_IC_INSTRUMENT calculate_text_section_aad_syscall(long fd, uint8_t
 
 // 更新后的哈希计算函数
 static void NO_IC_INSTRUMENT calculate_segment_hash_with_padding(
-        long fd, unsigned long offset, unsigned long filesz, unsigned long memsz, uint8_t *out_hash)
+        long fd, unsigned long offset, unsigned long filesz, unsigned long memsz, uint8_t* out_hash)
 {
     blake3_hasher hasher;
     blake3_hasher_init(&hasher);
@@ -2818,7 +2860,7 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux()
     direct_syscall(3, fd);  // 关闭文件
 
     // [7] 解密与验证 (保持不变)
-    uint8_t *enc_data = (uint8_t *)&__text_section_encrypted_hash;
+    uint8_t* enc_data = (uint8_t*)&__text_section_encrypted_hash;
     uint8_t safe_ciphertext[32];
     uint8_t safe_nonce[24];
     uint8_t safe_tag[16];
@@ -2843,7 +2885,7 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux()
     }
 
     // [8] 哈希比对
-    if (mini_strncmp((const char *)decrypted_hash, (const char *)calculated_hash, 32) != 0)
+    if (mini_strncmp((const char*)decrypted_hash, (const char*)calculated_hash, 32) != 0)
     {
 #ifdef debug
         debugprint("[IC-RUNTIME] Hash mismatch! Python hashed Segment+Padding, C++ hashed Section?\n");
@@ -2860,244 +2902,245 @@ static void NO_IC_INSTRUMENT verify_text_section_integrity_linux()
 
 #endif
 
-    // 静态校验的 C 接口函数，由全局构造函数调用
-    extern "C" void NO_IC_INSTRUMENT __verify_self_integrity()
-    {
+// 静态校验的 C 接口函数，由全局构造函数调用
+extern "C" void NO_IC_INSTRUMENT __verify_self_integrity()
+{
 #ifdef debug
-        debugprint("[IC-RUNTIME] __verify_self_integrity called.\n");
+    debugprint("[IC-RUNTIME] __verify_self_integrity called.\n");
 #endif
-#ifndef debug
-        // [1] Anti-Debug Checks
-        if (detect_debugger())
-        {
-            debugprint("[IC-RUNTIME] Debugger detected via TracerPid/Ptrace!\n");
 
-            secure_terminate();
-        }
-#endif
 #ifdef _WIN32
-        verify_text_section_integrity_windows();
+    verify_text_section_integrity_windows();
 #else
+#ifndef debug
+    // [1] Anti-Debug Checks
+    if (detect_debugger())
+    {
+        debugprint("[IC-RUNTIME] Debugger detected via TracerPid/Ptrace!\n");
+
+        secure_terminate();
+    }
+#endif
     verify_text_section_integrity_linux();
 #endif
+}
+
+// --- 3. 动态完整性校验实现 ---
+// 全局
+std::atomic<int> func_table_state{0};
+std::mutex func_table_mutex;
+thread_local bool func_table_init_in_progress = false;
+
+void ensure_func_table_initialized()
+{
+    if (func_table_state.load(std::memory_order_acquire) == 2) return;
+    if (func_table_init_in_progress) return;  // 防重入
+
+    std::lock_guard<std::mutex> lk(func_table_mutex);
+    if (func_table_state.load(std::memory_order_acquire) == 2) return;
+
+    // 标志并初始化
+    func_table_init_in_progress = true;
+    decrypt_and_cache_func_table();
+    func_table_state.store(2, std::memory_order_release);
+    func_table_init_in_progress = false;
+}
+
+// 动态校验的 C 接口函数，由 Pass 注入到受保护函数中
+//     extern "C" void NO_IC_INSTRUMENT __verify_memory_integrity(
+//             const void *function_addr)
+//     {
+//         // --- NEW: 确保函数表只被解密一次 ---
+//         // std::call_once(func_table_decrypted_flag, decrypt_and_cache_func_table);
+//         ensure_func_table_initialized();
+
+// #ifdef IC_DEBUG
+//         // --- Correctly name the incoming parameter for clarity ---
+//         const void *real_function_addr = function_addr;
+//         fprintf(stderr, "\n[IC-RUNTIME] __verify_memory_integrity(real_addr: %p)\n",
+//                 real_function_addr);
+// #else
+//     // In non-debug mode, just use the original name to avoid unused variable
+//     // warnings
+//     const void *real_function_addr = function_addr;
+// #endif
+
+//         // --- 核心修复：处理 ASLR ---
+//         // 1. 获取程序在内存中的实际基地址
+//         uintptr_t base_addr = get_program_base_address();
+//         // 2. 计算要查找的相对地址 (RVA)
+//         uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
+
+// #ifdef IC_DEBUG
+//         fprintf(stderr, "  - Program Base Addr: %p\n", (void *)base_addr);
+//         fprintf(stderr, "  - Calculated Relative Addr for Lookup: 0x%lx\n",
+//                 relative_addr_to_find);
+// #endif
+
+//         // --- MODIFIED: 遍历解密后的缓存表 ---
+//         const protected_func_info *table_start =
+//                 (const protected_func_info *)decrypted_func_table_cache.data();
+//         const size_t num_entries =
+//                 decrypted_func_table_cache.size() / sizeof(protected_func_info);
+
+//         for (size_t i = 0; i < num_entries; ++i)
+//         {
+//             const protected_func_info &info = table_start[i];
+
+//             // 检查由 encheck.py 添加的、作为表结尾标记的空条目
+//             if (info.addr == nullptr && info.size == 0)
+//             {
+//                 // 这是表的终止符。如果执行到这里，说明函数未找到。
+//                 break;
+//             }
+
+//             // --- Compare the calculated relative address with the one from the table
+//             // ---
+//             if ((uintptr_t)info.addr == relative_addr_to_find)
+//             {
+//                 // 找到了！现在执行哈希校验。
+// #ifdef IC_DEBUG
+//                 fprintf(stderr,
+//                         "  - Found matching entry at index %d. Stored RVA: %p, Size: "
+//                         "%lu\n",
+//                         (int)i, info.addr, info.size);
+// #endif
+//                 // 计算当前函数的哈希
+//                 uint8_t calculated_hash[BLAKE3_OUT_LEN];
+//                 blake3_hasher hasher;
+//                 blake3_hasher_init(&hasher);
+//                 // --- Use the real, absolute address for hashing ---
+//                 blake3_hasher_update(&hasher, real_function_addr, info.size);
+//                 blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
+
+//                 // --- Construct AAD from the info in the table and verify ---
+//                 uint8_t aad_data[16];  // 8 bytes for addr, 8 bytes for size
+//                 memcpy(aad_data, &info.addr, 8);
+//                 memcpy(aad_data + 8, &info.size, 8);
+
+//                 if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
+//                                              BLAKE3_OUT_LEN, aad_data,
+//                                              sizeof(aad_data)))
+//                 {
+// #ifdef IC_DEBUG
+//                     fprintf(stderr,
+//                             "[IC-RUNTIME] !! Verification FAILED for function at real "
+//                             "addr %p.\n",
+//                             real_function_addr);
+// #endif
+//                     secure_terminate();
+//                 }
+// #ifdef IC_DEBUG
+//                 fprintf(stderr,
+//                         "[IC-RUNTIME] Verification successful for function at real "
+//                         "addr %p.\n",
+//                         real_function_addr);
+// #endif
+//                 // 校验成功，可以停止搜索并返回
+//                 return;
+//             }
+//         }
+
+//         // 如果循环结束仍未找到函数，说明存在严重错误
+// #ifdef IC_DEBUG
+//         fprintf(stderr,
+//                 "[IC-RUNTIME] !! ERROR: Function with relative address 0x%lx not "
+//                 "found in the protection table.\n",
+//                 relative_addr_to_find);
+// #endif
+//         secure_terminate();  // 函数未在保护表中找到，这是严重错误
+//     }
+
+// 动态校验的 C 接口函数
+// 返回值:
+//   - 校验成功: 返回 function_addr (原样返回)
+//   - 校验失败: 返回 function_addr ^ 0xDEADBEEF (或者随机垃圾值)，并触发 secure_terminate
+//
+// 设计意图:
+//   编译器 Pass 会将此返回值参与到后续的计算中:
+//   Val = Val + (__verify(Addr) - Addr)
+//   如果校验成功，(Addr - Addr) 为 0，计算不受影响。
+//   如果校验失败或被 Patch 为返回 0，(0 - Addr) 会导致 Val 变成垃圾数据，导致程序逻辑错误而非直接崩溃。
+extern "C" uintptr_t NO_IC_INSTRUMENT __verify_memory_integrity(const void* function_addr)
+{
+    static thread_local bool is_verifying = false;
+    if (is_verifying)
+    {
+        return (uintptr_t)function_addr;
     }
 
-    // --- 3. 动态完整性校验实现 ---
-    // 全局
-    std::atomic<int> func_table_state{0};
-    std::mutex func_table_mutex;
-    thread_local bool func_table_init_in_progress = false;
+    is_verifying = true;
+    // 确保函数表已初始化
+    ensure_func_table_initialized();
 
-    void ensure_func_table_initialized()
-    {
-        if (func_table_state.load(std::memory_order_acquire) == 2) return;
-        if (func_table_init_in_progress) return;  // 防重入
+    const void* real_function_addr = function_addr;
 
-        std::lock_guard<std::mutex> lk(func_table_mutex);
-        if (func_table_state.load(std::memory_order_acquire) == 2) return;
-
-        // 标志并初始化
-        func_table_init_in_progress = true;
-        decrypt_and_cache_func_table();
-        func_table_state.store(2, std::memory_order_release);
-        func_table_init_in_progress = false;
-    }
-
-    // 动态校验的 C 接口函数，由 Pass 注入到受保护函数中
-    //     extern "C" void NO_IC_INSTRUMENT __verify_memory_integrity(
-    //             const void *function_addr)
-    //     {
-    //         // --- NEW: 确保函数表只被解密一次 ---
-    //         // std::call_once(func_table_decrypted_flag, decrypt_and_cache_func_table);
-    //         ensure_func_table_initialized();
-
-    // #ifdef IC_DEBUG
-    //         // --- Correctly name the incoming parameter for clarity ---
-    //         const void *real_function_addr = function_addr;
-    //         fprintf(stderr, "\n[IC-RUNTIME] __verify_memory_integrity(real_addr: %p)\n",
-    //                 real_function_addr);
-    // #else
-    //     // In non-debug mode, just use the original name to avoid unused variable
-    //     // warnings
-    //     const void *real_function_addr = function_addr;
-    // #endif
-
-    //         // --- 核心修复：处理 ASLR ---
-    //         // 1. 获取程序在内存中的实际基地址
-    //         uintptr_t base_addr = get_program_base_address();
-    //         // 2. 计算要查找的相对地址 (RVA)
-    //         uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
-
-    // #ifdef IC_DEBUG
-    //         fprintf(stderr, "  - Program Base Addr: %p\n", (void *)base_addr);
-    //         fprintf(stderr, "  - Calculated Relative Addr for Lookup: 0x%lx\n",
-    //                 relative_addr_to_find);
-    // #endif
-
-    //         // --- MODIFIED: 遍历解密后的缓存表 ---
-    //         const protected_func_info *table_start =
-    //                 (const protected_func_info *)decrypted_func_table_cache.data();
-    //         const size_t num_entries =
-    //                 decrypted_func_table_cache.size() / sizeof(protected_func_info);
-
-    //         for (size_t i = 0; i < num_entries; ++i)
-    //         {
-    //             const protected_func_info &info = table_start[i];
-
-    //             // 检查由 encheck.py 添加的、作为表结尾标记的空条目
-    //             if (info.addr == nullptr && info.size == 0)
-    //             {
-    //                 // 这是表的终止符。如果执行到这里，说明函数未找到。
-    //                 break;
-    //             }
-
-    //             // --- Compare the calculated relative address with the one from the table
-    //             // ---
-    //             if ((uintptr_t)info.addr == relative_addr_to_find)
-    //             {
-    //                 // 找到了！现在执行哈希校验。
-    // #ifdef IC_DEBUG
-    //                 fprintf(stderr,
-    //                         "  - Found matching entry at index %d. Stored RVA: %p, Size: "
-    //                         "%lu\n",
-    //                         (int)i, info.addr, info.size);
-    // #endif
-    //                 // 计算当前函数的哈希
-    //                 uint8_t calculated_hash[BLAKE3_OUT_LEN];
-    //                 blake3_hasher hasher;
-    //                 blake3_hasher_init(&hasher);
-    //                 // --- Use the real, absolute address for hashing ---
-    //                 blake3_hasher_update(&hasher, real_function_addr, info.size);
-    //                 blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
-
-    //                 // --- Construct AAD from the info in the table and verify ---
-    //                 uint8_t aad_data[16];  // 8 bytes for addr, 8 bytes for size
-    //                 memcpy(aad_data, &info.addr, 8);
-    //                 memcpy(aad_data + 8, &info.size, 8);
-
-    //                 if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
-    //                                              BLAKE3_OUT_LEN, aad_data,
-    //                                              sizeof(aad_data)))
-    //                 {
-    // #ifdef IC_DEBUG
-    //                     fprintf(stderr,
-    //                             "[IC-RUNTIME] !! Verification FAILED for function at real "
-    //                             "addr %p.\n",
-    //                             real_function_addr);
-    // #endif
-    //                     secure_terminate();
-    //                 }
-    // #ifdef IC_DEBUG
-    //                 fprintf(stderr,
-    //                         "[IC-RUNTIME] Verification successful for function at real "
-    //                         "addr %p.\n",
-    //                         real_function_addr);
-    // #endif
-    //                 // 校验成功，可以停止搜索并返回
-    //                 return;
-    //             }
-    //         }
-
-    //         // 如果循环结束仍未找到函数，说明存在严重错误
-    // #ifdef IC_DEBUG
-    //         fprintf(stderr,
-    //                 "[IC-RUNTIME] !! ERROR: Function with relative address 0x%lx not "
-    //                 "found in the protection table.\n",
-    //                 relative_addr_to_find);
-    // #endif
-    //         secure_terminate();  // 函数未在保护表中找到，这是严重错误
-    //     }
-
-    // 动态校验的 C 接口函数
-    // 返回值:
-    //   - 校验成功: 返回 function_addr (原样返回)
-    //   - 校验失败: 返回 function_addr ^ 0xDEADBEEF (或者随机垃圾值)，并触发 secure_terminate
-    //
-    // 设计意图:
-    //   编译器 Pass 会将此返回值参与到后续的计算中:
-    //   Val = Val + (__verify(Addr) - Addr)
-    //   如果校验成功，(Addr - Addr) 为 0，计算不受影响。
-    //   如果校验失败或被 Patch 为返回 0，(0 - Addr) 会导致 Val 变成垃圾数据，导致程序逻辑错误而非直接崩溃。
-    extern "C" uintptr_t NO_IC_INSTRUMENT __verify_memory_integrity(const void *function_addr)
-    {
-        static thread_local bool is_verifying = false;
-        if (is_verifying)
-        {
-            return (uintptr_t)function_addr;
-        }
-
-        is_verifying = true;
-        // 确保函数表已初始化
-        ensure_func_table_initialized();
-
-        const void *real_function_addr = function_addr;
-
-        // 获取基地址和 RVA
-        uintptr_t base_addr = get_program_base_address();
-        uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
+    // 获取基地址和 RVA
+    uintptr_t base_addr = get_program_base_address();
+    uintptr_t relative_addr_to_find = (uintptr_t)real_function_addr - base_addr;
 
 #ifdef debug
-        debugprint("[IC-RUNTIME] Target RVA: 0x%lx, Base Addr: 0x%lx\n",
-                   relative_addr_to_find, base_addr);
+    debugprint("[IC-RUNTIME] Target RVA: 0x%lx, Base Addr: 0x%lx\n",
+               relative_addr_to_find, base_addr);
 #endif
 
-        const protected_func_info *table_start =
-                (const protected_func_info *)decrypted_func_table_cache.data();
-        const size_t num_entries =
-                decrypted_func_table_cache.size() / sizeof(protected_func_info);
+    const protected_func_info* table_start =
+            (const protected_func_info*)decrypted_func_table_cache.data();
+    const size_t num_entries =
+            decrypted_func_table_cache.size() / sizeof(protected_func_info);
 
-        for (size_t i = 0; i < num_entries; ++i)
+    for (size_t i = 0; i < num_entries; ++i)
+    {
+        const protected_func_info& info = table_start[i];
+
+        if (info.addr == nullptr && info.size == 0) break;
+
+        if ((uintptr_t)info.addr == relative_addr_to_find)
         {
-            const protected_func_info &info = table_start[i];
+            // 找到条目，计算哈希
+            uint8_t calculated_hash[BLAKE3_OUT_LEN];
+            blake3_hasher hasher;
+            blake3_hasher_init(&hasher);
 
-            if (info.addr == nullptr && info.size == 0) break;
+            // 计算当前内存中函数的实际哈希
+            blake3_hasher_update(&hasher, real_function_addr, info.size);
+            blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
 
-            if ((uintptr_t)info.addr == relative_addr_to_find)
+            // 构造 AAD 并验证
+            uint8_t aad_data[16];
+            memcpy(aad_data, &info.addr, 8);
+            memcpy(aad_data + 8, &info.size, 8);
+
+            if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
+                                         BLAKE3_OUT_LEN, aad_data,
+                                         sizeof(aad_data)))
             {
-                // 找到条目，计算哈希
-                uint8_t calculated_hash[BLAKE3_OUT_LEN];
-                blake3_hasher hasher;
-                blake3_hasher_init(&hasher);
+                // 校验失败！
+                // 1. 触发异步/延迟的崩溃 (增加分析难度)
+                stack_overflow((uintptr_t)secure_terminate);
+                secure_terminate();
 
-                // 计算当前内存中函数的实际哈希
-                blake3_hasher_update(&hasher, real_function_addr, info.size);
-                blake3_hasher_finalize(&hasher, calculated_hash, BLAKE3_OUT_LEN);
-
-                // 构造 AAD 并验证
-                uint8_t aad_data[16];
-                memcpy(aad_data, &info.addr, 8);
-                memcpy(aad_data + 8, &info.size, 8);
-
-                if (!decrypt_and_verify_hash(info.enc_hash, calculated_hash,
-                                             BLAKE3_OUT_LEN, aad_data,
-                                             sizeof(aad_data)))
-                {
-                    // 校验失败！
-                    // 1. 触发异步/延迟的崩溃 (增加分析难度)
-                    stack_overflow((uintptr_t)secure_terminate);
-                    secure_terminate();
-
-                    // 2. 返回被污染的地址，破坏数据流
-                    return (uintptr_t)real_function_addr + (uintptr_t)info.addr;
-                }
-
-                // 校验成功，返回原始地址
-                is_verifying = false;
-                // 数据流依赖: (Ret - Addr) == 0
-                return (uintptr_t)real_function_addr;
+                // 2. 返回被污染的地址，破坏数据流
+                return (uintptr_t)real_function_addr + (uintptr_t)info.addr;
             }
-#ifdef debug
-            // 打印表中的 RVA 和目标 RVA 的差值
-            uintptr_t table_rva = (uintptr_t)info.addr;
-            if (i < 5 || (i % 10 == 0))
-            {  // 仅打印部分条目以避免日志过多
-                debugprint("[IC-RUNTIME] Table Entry %zu: RVA=0x%lx, Diff=0x%lx\n",
-                           i, table_rva, table_rva > relative_addr_to_find ? (table_rva - relative_addr_to_find) : (relative_addr_to_find - table_rva));
-            }
-#endif
+
+            // 校验成功，返回原始地址
+            is_verifying = false;
+            // 数据流依赖: (Ret - Addr) == 0
+            return (uintptr_t)real_function_addr;
         }
-
-        // 函数未找到（可能是非法调用或表损坏）
-        secure_terminate();
-        return (uintptr_t)real_function_addr + (uintptr_t)real_function_addr;
+#ifdef debug
+        // 打印表中的 RVA 和目标 RVA 的差值
+        uintptr_t table_rva = (uintptr_t)info.addr;
+        if (i < 5 || (i % 10 == 0))
+        {  // 仅打印部分条目以避免日志过多
+            debugprint("[IC-RUNTIME] Table Entry %zu: RVA=0x%lx, Diff=0x%lx\n",
+                       i, table_rva, table_rva > relative_addr_to_find ? (table_rva - relative_addr_to_find) : (relative_addr_to_find - table_rva));
+        }
+#endif
     }
+
+    // 函数未找到（可能是非法调用或表损坏）
+    secure_terminate();
+    return (uintptr_t)real_function_addr + (uintptr_t)real_function_addr;
+}

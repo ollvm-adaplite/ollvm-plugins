@@ -17,6 +17,8 @@ public:
     // Pass 的主入口点
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 
+    Constant* getNonZeroInitializer(Module& M, Type* Ty);
+
     // 告知 Pass Manager 此 Pass 总是需要运行
     static bool isRequired()
     {

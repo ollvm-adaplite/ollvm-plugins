@@ -51,6 +51,55 @@
                 "CMAKE_CXX_COMPILER": "/usr/bin/clang++-21",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
+        },
+        {
+            "name": "clang21",
+            "displayName": "Clang 21.1.0 x86_64-pc-windows-msvc",
+            "description": "正在使用编译器: C = E:\\code\\LLVM\\bin\\clang.exe, CXX = E:\\code\\LLVM\\bin\\clang++.exe",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "E:/code/LLVM/bin/clang.exe",
+                "CMAKE_CXX_COMPILER": "E:/code/LLVM/bin/clang++.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "clang211",
+            "displayName": "Clang 21.1.3 x86_64-pc-windows-msvc",
+            "description": "正在使用编译器: C = E:\\code\\LLVM\\bin\\clang.exe, CXX = E:\\code\\LLVM\\bin\\clang++.exe",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "E:/code/LLVM/bin/clang.exe",
+                "CMAKE_CXX_COMPILER": "E:/code/LLVM/bin/clang++.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "ninja-clang",
+            "displayName": "Ninja + LLVM clang",
+            "description": "Windows 使用 Ninja + clang/clang++",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/build",
+                "CMAKE_C_COMPILER": "E:/code/LLVM/bin/clang.exe",
+                "CMAKE_CXX_COMPILER": "E:/code/LLVM/bin/clang++.exe"
+            }
+        },
+        {
+            "name": "clang-cl",
+            "displayName": "Clang-cl 21.1.3 x86_64-pc-windows-msvc",
+            "description": "正在使用编译器: C = E:\\code\\LLVM\\bin\\clang-cl.exe, CXX = E:\\code\\LLVM\\bin\\clang-cl.exe",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "E:/code/LLVM/bin/clang-cl.exe",
+                "CMAKE_CXX_COMPILER": "E:/code/LLVM/bin/clang-cl.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         }
     ]
 }

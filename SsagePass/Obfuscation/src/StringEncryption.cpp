@@ -40,7 +40,7 @@ static cl::opt<bool> OnlyStr("mmonlystr", cl::desc("Encrypt string variable only
 static std::vector<uint8_t> getRandomBytes(size_t n) {
     static thread_local std::random_device rd;
     static thread_local std::mt19937 gen(rd());
-    std::uniform_int_distribution<uint8_t> dist(0, 255);
+    std::uniform_int_distribution<unsigned short> dist(0, 255);
     std::vector<uint8_t> bytes(n);
     for (size_t i = 0; i < n; ++i) bytes[i] = dist(gen);
     return bytes;

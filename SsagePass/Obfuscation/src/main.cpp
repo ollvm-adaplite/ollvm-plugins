@@ -65,84 +65,25 @@
 // 使用 llvm 命名空间，因为 FlatteningEnhanced.h 中类和函数都在此命名空间
 using namespace llvm;
 
-// --- HelloPass (for testing or other purposes, kept as is) ---
-struct HelloPass : public PassInfoMixin<HelloPass>
-{
-    PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM)
-    {
-        errs() << "=== HelloPass::run called for function: " << F.getName()
-               << " ===\n";
-        bool Changed = false;
-        if (F.getName() == "main")
-        {
-            errs() << "Found main function, inserting hello message\n";
-            insertHelloMessage(F);
-            Changed = true;
-        }
 
-        std::vector<BinaryOperator *> toReplace;
-        for (auto &BB : F)
-        {
-            for (auto &I : BB)
-            {
-                if (auto *BO = dyn_cast<BinaryOperator>(&I))
-                {
-                    if (BO->getOpcode() == Instruction::Add)
-                    {
-                        errs() << "Found ADD instruction to replace\n";
-                        toReplace.push_back(BO);
-                    }
-                }
-            }
-        }
-
-        for (auto *BO : toReplace)
-        {
-            ob_add(BO);
-            Changed = true;
-        }
-        return Changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
-    }
-
-private:
-    void insertHelloMessage(Function &F)
-    {
-        Module *M = F.getParent();
-        LLVMContext &Context = M->getContext();
-        FunctionType *printfType =
-                FunctionType::get(Type::getInt32Ty(Context),
-                                  PointerType::get(Type::getInt8Ty(Context), 0), true);
-        FunctionCallee printfFunc = M->getOrInsertFunction("printf", printfType);
-        BasicBlock &EntryBB = F.getEntryBlock();
-        Instruction *FirstInst = &*EntryBB.begin();
-        IRBuilder<> Builder(FirstInst);
-        Value *StrPtr =
-                Builder.CreateGlobalStringPtr("hello run!123 from HelloPass\n");
-        Builder.CreateCall(printfFunc, {StrPtr});
-    }
-
-    void ob_add(BinaryOperator *bo)
-    {
-        IRBuilder<> builder(bo);
-        Value *negB = builder.CreateNeg(bo->getOperand(1));
-        Value *result = builder.CreateSub(bo->getOperand(0), negB);
-        if (auto *newBO = dyn_cast<BinaryOperator>(result))
-        {
-            newBO->setHasNoSignedWrap(bo->hasNoSignedWrap());
-            newBO->setHasNoUnsignedWrap(bo->hasNoUnsignedWrap());
-        }
-        bo->replaceAllUsesWith(result);
-        bo->eraseFromParent();
-    }
-};
 
 // --- LLVM Pass Plugin Registration ---
-extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
+
+// --- 修改开始：添加 Windows 导出宏 ---
+#ifdef _WIN32
+#define PLUGIN_EXPORT __declspec(dllexport)
+#else
+#define PLUGIN_EXPORT LLVM_ATTRIBUTE_WEAK
+#endif
+// --- 修改结束 ---
+
+// 将 LLVM_ATTRIBUTE_WEAK 替换为 PLUGIN_EXPORT
+extern "C" PLUGIN_EXPORT ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo()
 {
     return {LLVM_PLUGIN_API_VERSION, "MyPasses", LLVM_VERSION_STRING,
 
-            [](PassBuilder &PB)
+            [](PassBuilder& PB)
             {
                 /* PB.registerPipelineParsingCallback(
                 [](StringRef Name, ModulePassManager &MPM,
@@ -163,7 +104,7 @@ llvmGetPassPluginInfo()
                 }); */
 
                 PB.registerPipelineStartEPCallback(
-                        [](ModulePassManager &MPM, OptimizationLevel Level)
+                        [](ModulePassManager& MPM, OptimizationLevel Level)
                         {
                             // --- 修改这里，不再需要解引用 ---
                             // MPM.addPass(createModuleToFunctionPassAdaptor(llvm::createVMFlatten_withoutptr(true,2)));
@@ -182,10 +123,10 @@ llvmGetPassPluginInfo()
                             //  MPM.addPass(llvm::StringEncryptionPass(
                             // true));
                             MPM.addPass(llvm::IntegrityCheckPass(true));
-                           /*  MPM.addPass(llvm::FlatteningEnhanced(
+                            /*  MPM.addPass(llvm::FlatteningEnhanced(
                                     true)); */
-                            MPM.addPass(llvm::FlatteningEnhancedver2(
-                                    true));
+                         /*    MPM.addPass(llvm::FlatteningEnhancedver2(
+                                    true)); */
 
                             //  MPM.addPass(llvm::IndirectBranchPass(true));
                             // MPM.addPass(llvm::FunctionWrapperPass(true));

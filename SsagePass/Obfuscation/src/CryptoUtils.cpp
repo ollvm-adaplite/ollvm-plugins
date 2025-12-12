@@ -980,8 +980,8 @@ void CryptoUtils::populate_pool()
 
 #if defined(_WIN64) || defined(_WIN32)
 // sic! don't change include order
-#include <wincrypt.h>
 #include <windows.h>
+#include <wincrypt.h>
 
 struct WinDevRandom
 {
@@ -1375,14 +1375,14 @@ bool CryptoUtils::myprng_seed()
             debuglog("Generator created successfully");
 
             debuglog("Creating uniform distribution for uint8_t...");
-            std::uniform_int_distribution<uint8_t> distrib(0, 255);
+            std::uniform_int_distribution<unsigned short> distrib(0, 255);
             debuglog("Distribution created successfully");
 
             debuglog("Starting to fill key array with random bytes...");
-            for (int i = 0; i < 16; ++i)
+             for (int i = 0; i < 16; ++i)
             {
                 debuglog("Generating byte " + std::to_string(i) + "/16...");
-                uint8_t random_byte = distrib(gen);
+                uint8_t random_byte = static_cast<uint8_t>(distrib(gen));
                 debuglog("Generated value: " + std::to_string(random_byte));
                 this->key[i] = static_cast<char>(random_byte);
                 debuglog("Stored byte " + std::to_string(i) + " in key array");
