@@ -15,6 +15,7 @@ build/*
 
 # test file
 charge_test.out.*
+charge_test.*
 epthook/*
 
 #gdb
