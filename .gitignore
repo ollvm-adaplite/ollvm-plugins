@@ -12,6 +12,10 @@ build/*
 *.dll
 *.ll
 
+out/*
+x64/*
+
+
 
 # test file
 charge_test.out.*
