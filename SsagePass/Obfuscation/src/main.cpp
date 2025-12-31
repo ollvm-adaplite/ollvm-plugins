@@ -125,8 +125,8 @@ llvmGetPassPluginInfo()
                             MPM.addPass(llvm::IntegrityCheckPass(true));
                             /*  MPM.addPass(llvm::FlatteningEnhanced(
                                     true)); */
-                         /*    MPM.addPass(llvm::FlatteningEnhancedver2(
-                                    true)); */
+                            MPM.addPass(llvm::FlatteningEnhancedver2(
+                                    true));
 
                             //  MPM.addPass(llvm::IndirectBranchPass(true));
                             // MPM.addPass(llvm::FunctionWrapperPass(true));

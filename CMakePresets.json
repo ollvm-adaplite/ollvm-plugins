@@ -94,6 +94,7 @@
             "displayName": "Clang-cl 21.1.3 x86_64-pc-windows-msvc",
             "description": "正在使用编译器: C = E:\\code\\LLVM\\bin\\clang-cl.exe, CXX = E:\\code\\LLVM\\bin\\clang-cl.exe",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
                 "CMAKE_C_COMPILER": "E:/code/LLVM/bin/clang-cl.exe",
